@@ -1,39 +1,52 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>NSCET Student Hackathon</title>
+    <title>NSCET INNOVATE 24 - Import Students</title>
+    <link rel="stylesheet" href="./css/style.css">
 </head>
 
 <body>
+    <header class="header">
+        <div class="header-content">
+            <div class="brand-section">
+                <div class="brand-icon">📥</div>
+                <div class="brand-title">
+                    <h1>NSCET INNOVATE 24</h1>
+                    <p>Excel Data Import Portal</p>
+                </div>
+            </div>
 
-    <h1>NSCET Student Hackathon</h1>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">📊 Main Desk</a>
+                <a href="dashboard.html" class="nav-link">📈 Analytics</a>
+                <a href="import.html" class="nav-link active">📥 Import Excel</a>
+                <a href="teams.html" class="nav-link">📋 Teams List</a>
+            </nav>
+        </div>
+    </header>
 
-    <h2>Import Student Excel</h2>
+    <main class="container">
+        <div class="card" style="max-width: 720px; margin: auto;">
+            <h2>📥 Import Student Excel Sheet</h2>
+            <p>Upload the official Excel spreadsheet containing student registration details.</p>
 
-    <input
-        type="file"
-        id="excelFile"
-        accept=".xlsx,.xls"
-    >
+            <div class="file-drop-area">
+                <div class="file-icon">📄</div>
+                <label for="excelFile"><strong>Choose Excel file (.xlsx, .xls)</strong></label>
+                <br><br>
+                <input type="file" id="excelFile" accept=".xlsx,.xls">
+            </div>
 
-    <br><br>
+            <button id="importBtn" class="overall-report-btn" style="width: 100%; justify-content: center; padding: 14px;">🚀 Import Students to Firebase</button>
 
-    <button id="importBtn">
-        Import Students
-    </button>
-
-    <p id="status"></p>
+            <div id="status"></div>
+        </div>
+    </main>
 
     <!-- Excel library -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-
-    <!-- Our JavaScript -->
     <script type="module" src="js/import.js"></script>
-
 </body>
-
 </html>

@@ -3,56 +3,43 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-
-    <title>NSCET Hackathon</title>
-
-    <style>
-        body {
-            font-family: Arial, sans-serif;
-            background: #f4f6f8;
-            margin: 0;
-            padding: 30px;
-        }
-
-        h1 {
-            text-align: center;
-        }
-
-        #teams {
-            max-width: 600px;
-            margin: 30px auto;
-        }
-
-        .team {
-            background: white;
-            padding: 18px;
-            margin-bottom: 12px;
-            border-radius: 8px;
-            cursor: pointer;
-            border: 1px solid #ddd;
-        }
-
-        .team:hover {
-            background: #eef4ff;
-        }
-
-        .team h3 {
-            margin: 0;
-        }
-    </style>
+    <title>NSCET INNOVATE 24 - Teams Directory</title>
+    <link rel="stylesheet" href="./css/style.css">
 </head>
 
 <body>
+    <header class="header">
+        <div class="header-content">
+            <div class="brand-section">
+                <div class="brand-icon">📋</div>
+                <div class="brand-title">
+                    <h1>NSCET INNOVATE 24</h1>
+                    <p>Registered Teams Directory</p>
+                </div>
+            </div>
 
-    <h1>NSCET INNOVATE 24</h1>
+            <nav class="nav-links">
+                <a href="index.html" class="nav-link">📊 Main Desk</a>
+                <a href="dashboard.html" class="nav-link">📈 Analytics</a>
+                <a href="import.html" class="nav-link">📥 Import Excel</a>
+                <a href="teams.html" class="nav-link active">📋 Teams List</a>
+            </nav>
+        </div>
+    </header>
 
-    <h2>Teams</h2>
+    <main class="container">
+        <div class="page-title">
+            <div>
+                <h2>📋 Teams Directory</h2>
+                <p>Overview of all registered hackathon teams and members</p>
+            </div>
+        </div>
 
-    <div id="teams">
-        Loading...
-    </div>
+        <div id="teams">
+            Loading teams...
+        </div>
+    </main>
 
     <script type="module" src="js/teams.js"></script>
-
 </body>
 </html>

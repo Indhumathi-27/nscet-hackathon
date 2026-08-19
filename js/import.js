@@ -10,6 +10,11 @@ const fileInput = document.getElementById("excelFile");
 const importBtn = document.getElementById("importBtn");
 const status = document.getElementById("status");
 
+function setStatus(message, type = "info") {
+    if (!status) return;
+    status.innerText = message;
+    status.className = `status-${type}`;
+}
 
 importBtn.addEventListener("click", async () => {
 
@@ -17,24 +22,26 @@ importBtn.addEventListener("click", async () => {
 
     // Check whether an Excel file is selected
     if (!file) {
-        status.innerText = "Please select an Excel file.";
+        setStatus("Please select an Excel file.", "error");
         return;
     }
 
     try {
-
-        status.innerText = "Reading Excel file...";
+        setStatus("Reading Excel file...", "info");
+        importBtn.disabled = true;
 
         // Read the Excel file
         const data = await file.arrayBuffer();
 
         const workbook = XLSX.read(data);
 
-        // Get the Participants sheet
-        const worksheet = workbook.Sheets["Participants"];
+        // Get the Participants sheet (fallback to first sheet if 'Participants' not found)
+        const sheetName = workbook.Sheets["Participants"] ? "Participants" : workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[sheetName];
 
         if (!worksheet) {
-            status.innerText = "Participants sheet not found.";
+            setStatus("No data sheet found in Excel file.", "error");
+            importBtn.disabled = false;
             return;
         }
 
@@ -43,123 +50,63 @@ importBtn.addEventListener("click", async () => {
 
         console.log("Excel data:", students);
 
-        status.innerText =
-            `Found ${students.length} records. Uploading...`;
-
+        setStatus(`Found ${students.length} records. Uploading to Firebase...`, "info");
 
         let currentTeam = "";
-
         let uploadedCount = 0;
-
 
         // Process every student
         for (let i = 0; i < students.length; i++) {
-
             const student = students[i];
 
-
-            // Get team/form name
-            // If current row has a Form value, update currentTeam
             if (student["Form"]) {
                 currentTeam = String(student["Form"]).trim();
             }
 
+            const studentName = String(student["Student Name"] || "").trim();
 
-            // Get student name
-            const studentName =
-                String(student["Student Name"] || "").trim();
-
-
-            // Skip completely empty rows
             if (!studentName) {
                 continue;
             }
 
+            const participantNo = String(student["Participant No."] || "").trim();
 
-            // Participant number
-            const participantNo =
-                String(student["Participant No."] || "").trim();
+            const studentId = `${currentTeam || "Team"}_${participantNo || i + 1}`.replace(/\s+/g, "_");
 
-
-            // Create unique student ID
-            const studentId =
-                `${currentTeam}_${participantNo || i + 1}`
-                    .replace(/\s+/g, "_");
-
-
-            // Student data for Firebase
             const studentData = {
-
                 studentId: studentId,
-
                 teamName: currentTeam,
-
-                school:
-                    String(student["School"] || "").trim(),
-
-                address:
-                    String(student["Address"] || "").trim(),
-
-                pincode:
-                    String(student["Pincode"] || "").trim(),
-
-                headmasterPhone:
-                    String(student["Headmaster Phone"] || "").trim(),
-
-                projectTitle:
-                    String(student["Project Title"] || "").trim(),
-
-                participantNo:
-                    participantNo,
-
-                studentName:
-                    studentName,
-
-                classDivision:
-                    String(student["Class / Division"] || "").trim(),
-
-                studentPhone:
-                    String(student["Student Phone"] || "").trim(),
-
-                mentor:
-                    String(student["Mentor"] || "").trim(),
-
-                internetFacility:
-                    String(student["Internet Facility"] || "").trim(),
-
-                verified: false
+                teamNo: currentTeam,
+                school: String(student["School"] || "").trim(),
+                address: String(student["Address"] || "").trim(),
+                pincode: String(student["Pincode"] || "").trim(),
+                headmasterPhone: String(student["Headmaster Phone"] || "").trim(),
+                projectTitle: String(student["Project Title"] || "").trim(),
+                participantNo: participantNo,
+                studentName: studentName,
+                classDivision: String(student["Class / Division"] || "").trim(),
+                studentPhone: String(student["Student Phone"] || "").trim(),
+                mentor: String(student["Mentor"] || "").trim(),
+                internetFacility: String(student["Internet Facility"] || "").trim(),
+                verified: false,
+                arrived: false
             };
 
-
-            // Save to Firestore
             await setDoc(
                 doc(db, "students", studentId),
                 studentData
             );
 
-
             uploadedCount++;
-
-            status.innerText =
-                `Uploaded ${uploadedCount} students...`;
-
-            console.log(
-                "Uploaded:",
-                studentData
-            );
+            setStatus(`Uploaded ${uploadedCount} of ${students.length} students...`, "info");
         }
 
+        setStatus(`✅ Successfully uploaded ${uploadedCount} students!`, "success");
+        importBtn.disabled = false;
 
-        status.innerText =
-            `✅ Successfully uploaded ${uploadedCount} students!`;
-
-    }
-    catch (error) {
-
+    } catch (error) {
         console.error("Upload error:", error);
-
-        status.innerText =
-            `❌ Error: ${error.message}`;
+        setStatus(`❌ Error: ${error.message}`, "error");
+        importBtn.disabled = false;
     }
-
 });

@@ -49,69 +49,45 @@ async function loadDashboard() {
         // UNIQUE TEAMS
         // =================================
 
+        function getStudentTeam(student) {
+            return (student.teamName || student.teamNo || "").trim();
+        }
+
+        function isVerified(student) {
+            return (
+                student.verified === true ||
+                student.verified === "true" ||
+                student.verified === 1 ||
+                student.arrived === true ||
+                student.arrived === "true" ||
+                student.arrived === 1
+            );
+        }
+
         const teamNames = [
-
             ...new Set(
-
                 students
-
-                    .map(
-                        student =>
-                            student.teamName
-                    )
-
-                    .filter(
-                        team => team
-                    )
-
+                    .map(student => getStudentTeam(student))
+                    .filter(Boolean)
             )
-
         ];
 
-
-        const totalTeams =
-            teamNames.length;
-
-
-        // =================================
-        // ARRIVED TEAMS
-        // =================================
-
+        const totalTeams = teamNames.length;
         let arrivedTeams = 0;
 
+        teamNames.forEach((teamName) => {
+            const members = students.filter(
+                student => getStudentTeam(student) === teamName
+            );
 
-        teamNames.forEach(
-            (teamName) => {
+            const allArrived =
+                members.length > 0 &&
+                members.every(isVerified);
 
-
-                const members =
-                    students.filter(
-
-                        student =>
-                            student.teamName ===
-                            teamName
-
-                    );
-
-
-                const allArrived =
-                    members.length > 0 &&
-                    members.every(
-
-                        student =>
-                            student.verified === true
-
-                    );
-
-
-                if (allArrived) {
-
-                    arrivedTeams++;
-
-                }
-
+            if (allArrived) {
+                arrivedTeams++;
             }
-        );
+        });
 
 
         // =================================
