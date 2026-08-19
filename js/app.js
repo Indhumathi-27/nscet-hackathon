@@ -1,8 +1,10 @@
 import {
     collection,
     getDocs,
+    onSnapshot,
     updateDoc,
     doc,
+    setDoc,
     addDoc,
     deleteDoc
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
@@ -37,7 +39,20 @@ function escapeHTML(value = "") {
 }
 
 function getStudentTeam(student) {
-    return (student.teamName || student.teamNo || "").trim();
+    const team = (
+        student.teamName ||
+        student.teamNo ||
+        student.Form ||
+        student.team ||
+        student.T ||
+        ""
+    ).trim();
+
+    if (team) return team;
+    if (student.school && student.school.trim() && student.school.trim() !== "N/A") {
+        return `School: ${student.school.trim()}`;
+    }
+    return "General Registration";
 }
 
 function isVerified(student) {
@@ -62,59 +77,39 @@ function getTeamNames() {
 }
 
 // ========================================
-// LOAD STUDENTS
+// LOAD STUDENTS (REALTIME SYNC)
 // ========================================
 
-async function loadStudents() {
+function loadStudents() {
     try {
-        console.log("Loading students from Firebase...");
+        console.log("Listening for real-time student updates from Firebase...");
 
-        const snapshot = await getDocs(
-            studentsCollection
-        );
+        onSnapshot(studentsCollection, (snapshot) => {
+            allStudents = snapshot.docs.map(docSnap => ({
+                id: docSnap.id,
+                ...docSnap.data()
+            }));
 
-        allStudents = snapshot.docs.map(
-            documentSnapshot => ({
-                id: documentSnapshot.id,
-                ...documentSnapshot.data()
-            })
-        );
-
-        console.log(
-            "Students found:",
-            allStudents.length
-        );
-
-        console.table(allStudents);
-
-        showDashboard();
-        showTeams();
+            console.log("Real-time students loaded:", allStudents.length);
+            showDashboard();
+            showTeams();
+        }, (error) => {
+            console.error("FIREBASE REALTIME LOAD ERROR:", error);
+            if (teamsDiv) {
+                teamsDiv.innerHTML = `
+                    <div class="firebase-error">
+                        <strong>❌ Failed to load students from Firebase.</strong>
+                        <br><br>
+                        ${escapeHTML(error.message)}
+                        <br><br>
+                        Check your internet connection, Firebase configuration, and Firestore rules.
+                    </div>
+                `;
+            }
+        });
 
     } catch (error) {
-        console.error(
-            "FIREBASE LOAD ERROR:",
-            error
-        );
-
-        if (teamsDiv) {
-            teamsDiv.innerHTML = `
-                <div class="firebase-error">
-                    <strong>
-                        ❌ Failed to load students.
-                    </strong>
-
-                    <br><br>
-
-                    ${escapeHTML(error.message)}
-
-                    <br><br>
-
-                    Check your internet connection,
-                    Firebase configuration,
-                    Firestore rules, and collection name.
-                </div>
-            `;
-        }
+        console.error("FIREBASE LOAD ERROR:", error);
     }
 }
 
@@ -217,6 +212,10 @@ function createMemberInput(number) {
 function showAddTeamForm() {
     if (!teamsDiv) return;
 
+    // Generate next default team ID like NSCET-008
+    const teamCount = getTeamNames().length;
+    const defaultTeamId = `NSCET-${String(teamCount + 1).padStart(3, "0")}`;
+
     teamsDiv.innerHTML = `
         <div class="add-team-card">
             <button
@@ -229,38 +228,38 @@ function showAddTeamForm() {
 
             <div class="form-header">
                 <h2>➕ Add New Team Item</h2>
-                <p class="form-subtitle">Register a new team, project, mentor, and student participant items into Firebase</p>
+                <p class="form-subtitle">Register a team using fields matching your official Excel spreadsheet format</p>
             </div>
 
             <div class="form-section">
-                <h3>📌 Team Details</h3>
+                <h3>📌 Excel Header Information</h3>
 
                 <div class="team-details-grid">
                     <div class="form-group">
-                        <label for="newTeamName">Team Name *</label>
-                        <input type="text" id="newTeamName" placeholder="Example: Code Craft">
+                        <label for="newTeamName">ID / Team ID (Matches Excel 'ID') *</label>
+                        <input type="text" id="newTeamName" placeholder="e.g. NSCET-008" value="${escapeHTML(defaultTeamId)}">
                     </div>
 
                     <div class="form-group">
-                        <label for="newSchool">School Name *</label>
-                        <input type="text" id="newSchool" placeholder="Enter school name">
+                        <label for="newSchool">SCHOOL NAME *</label>
+                        <input type="text" id="newSchool" placeholder="e.g. Nadar Saraswathi Girls Hr. Sec School, Edamal Street, Theni">
                     </div>
 
                     <div class="form-group">
-                        <label for="newProject">Project Title</label>
-                        <input type="text" id="newProject" placeholder="Enter project title">
+                        <label for="newProject">PROJECT NAME</label>
+                        <input type="text" id="newProject" placeholder="e.g. Smart Village / Echo Drive vehicle">
                     </div>
 
                     <div class="form-group">
-                        <label for="newMentor">Mentor Name</label>
-                        <input type="text" id="newMentor" placeholder="Enter mentor name">
+                        <label for="newMentor">MENTOR</label>
+                        <input type="text" id="newMentor" placeholder="e.g. S. Dhanalakshmi / 9698713423">
                     </div>
                 </div>
             </div>
 
             <div class="form-section">
                 <div class="members-form-header">
-                    <h3>👥 Team Member Items</h3>
+                    <h3>👥 Team Member Items (NO OF MEMBERS: 4)</h3>
 
                     <button
                         id="addMemberBtn"
@@ -273,6 +272,9 @@ function showAddTeamForm() {
 
                 <div id="newMembers">
                     ${createMemberInput(1)}
+                    ${createMemberInput(2)}
+                    ${createMemberInput(3)}
+                    ${createMemberInput(4)}
                 </div>
             </div>
 
@@ -560,6 +562,94 @@ async function deleteTeam(teamName) {
     }
 }
 
+// ========================================
+// SEED SAMPLE DEMO DATA
+// ========================================
+
+async function seedSampleData() {
+    const seedBtn = document.getElementById("seedSampleDataBtn");
+    if (seedBtn) {
+        seedBtn.disabled = true;
+        seedBtn.textContent = "⏳ Adding Demo Teams...";
+    }
+
+    const sampleStudents = [
+        {
+            studentId: "CodeCraft_P1",
+            teamName: "Code Craft",
+            teamNo: "Code Craft",
+            studentName: "Alex Johnson",
+            participantNo: "P101",
+            school: "NSCET Public School",
+            projectTitle: "AI Traffic Light System",
+            mentor: "Prof. R. Sharma",
+            classDivision: "10-A",
+            studentPhone: "9876543210",
+            verified: true,
+            arrived: true,
+            createdAt: new Date().toISOString()
+        },
+        {
+            studentId: "CodeCraft_P2",
+            teamName: "Code Craft",
+            teamNo: "Code Craft",
+            studentName: "Sarah Williams",
+            participantNo: "P102",
+            school: "NSCET Public School",
+            projectTitle: "AI Traffic Light System",
+            mentor: "Prof. R. Sharma",
+            classDivision: "10-A",
+            studentPhone: "9876543211",
+            verified: true,
+            arrived: true,
+            createdAt: new Date().toISOString()
+        },
+        {
+            studentId: "RoboInnovators_P1",
+            teamName: "Robo Innovators",
+            teamNo: "Robo Innovators",
+            studentName: "Michael Brown",
+            participantNo: "P201",
+            school: "St. Joseph Academy",
+            projectTitle: "Smart Irrigation Bot",
+            mentor: "Dr. S. Kumar",
+            classDivision: "9-B",
+            studentPhone: "9876543212",
+            verified: false,
+            arrived: false,
+            createdAt: new Date().toISOString()
+        },
+        {
+            studentId: "RoboInnovators_P2",
+            teamName: "Robo Innovators",
+            teamNo: "Robo Innovators",
+            studentName: "Emily Davis",
+            participantNo: "P202",
+            school: "St. Joseph Academy",
+            projectTitle: "Smart Irrigation Bot",
+            mentor: "Dr. S. Kumar",
+            classDivision: "9-B",
+            studentPhone: "9876543213",
+            verified: false,
+            arrived: false,
+            createdAt: new Date().toISOString()
+        }
+    ];
+
+    try {
+        for (const student of sampleStudents) {
+            await setDoc(doc(db, "students", student.studentId), student);
+        }
+        console.log("Sample demo teams added successfully!");
+    } catch (err) {
+        console.error("Seed error:", err);
+        alert("Failed to add sample teams: " + err.message + "\n\nPlease check Firebase Firestore Security Rules.");
+        if (seedBtn) {
+            seedBtn.disabled = false;
+            seedBtn.textContent = "🌱 Add Sample Demo Teams";
+        }
+    }
+}
 
 // ========================================
 // SHOW TEAMS
@@ -669,14 +759,35 @@ function showTeams() {
     });
 
     if (filteredTeamNames.length === 0) {
-        teamsDiv.insertAdjacentHTML(
-            "beforeend",
-            `
-                <p class="empty-message">
-                    No matching teams found.
-                </p>
-            `
-        );
+        if (allTeamNames.length === 0) {
+            teamsDiv.insertAdjacentHTML(
+                "beforeend",
+                `
+                    <div class="empty-state-card" style="text-align: center; padding: 40px 20px; background: #f8fafc; border-radius: 20px; border: 2px dashed #cbd5e1; margin-top: 20px;">
+                        <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
+                        <h3 style="font-size: 19px; font-weight: 800; color: #1e293b; margin-bottom: 6px;">No Registered Teams Found in Firebase</h3>
+                        <p style="color: #64748b; font-size: 14px; max-width: 520px; margin: 0 auto 22px; line-height: 1.5;">
+                            Your Firebase database is currently empty. Upload an Excel spreadsheet or click below to populate sample demo teams instantly!
+                        </p>
+                        <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
+                            <a href="import.html" class="save-team-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 11px 20px;">📥 Import Excel Sheet</a>
+                            <button id="seedSampleDataBtn" class="add-team-btn" type="button" style="background: #10b981; padding: 11px 20px;">🌱 Add Sample Demo Teams</button>
+                        </div>
+                    </div>
+                `
+            );
+
+            document.getElementById("seedSampleDataBtn")?.addEventListener("click", seedSampleData);
+        } else {
+            teamsDiv.insertAdjacentHTML(
+                "beforeend",
+                `
+                    <p class="empty-message" style="text-align: center; padding: 30px; color: #64748b; font-weight: 600;">
+                        🔍 No teams matching filter criteria found.
+                    </p>
+                `
+            );
+        }
         return;
     }
 
@@ -709,10 +820,10 @@ function showTeams() {
         );
 
         const firstMember = members[0] || {};
-        const teamId = firstMember.studentId || firstMember.id || teamName;
-        const school = firstMember.school || "N/A";
-        const project = firstMember.projectTitle || "N/A";
-        const mentor = firstMember.mentor || "N/A";
+        const teamId = teamName;
+        const school = members.find(m => m.school && m.school !== "N/A")?.school || firstMember.school || "N/A";
+        const project = members.find(m => m.projectTitle && m.projectTitle !== "N/A")?.projectTitle || firstMember.projectTitle || "N/A";
+        const mentor = members.find(m => m.mentor && m.mentor !== "N/A")?.mentor || firstMember.mentor || "N/A";
 
         const totalMembers = members.length;
         const arrivedMembers = members.filter(isVerified).length;
@@ -747,6 +858,7 @@ function showTeams() {
             <td>
                 <div class="team-actions">
                     <button class="view-btn" type="button">View</button>
+                    <button class="edit-team-btn" type="button">✏️ Edit</button>
                     <button class="delete-team-btn" type="button">🗑️ Delete</button>
                 </div>
             </td>
@@ -756,12 +868,223 @@ function showTeams() {
             showTeam(teamName);
         });
 
+        row.querySelector(".edit-team-btn")?.addEventListener("click", () => {
+            showEditTeamForm(teamName);
+        });
+
         row.querySelector(".delete-team-btn")?.addEventListener("click", () => {
             deleteTeam(teamName);
         });
 
         tableBody.appendChild(row);
     });
+}
+
+// ========================================
+// EDIT TEAM FORM
+// ========================================
+
+function showEditTeamForm(originalTeamName) {
+    if (!teamsDiv) return;
+
+    const members = allStudents.filter(
+        student => getStudentTeam(student) === originalTeamName
+    );
+
+    if (members.length === 0) {
+        alert("Team not found.");
+        showTeams();
+        return;
+    }
+
+    const school = members.find(m => m.school && m.school !== "N/A")?.school || members[0]?.school || "";
+    const project = members.find(m => m.projectTitle && m.projectTitle !== "N/A")?.projectTitle || members[0]?.projectTitle || "";
+    const mentor = members.find(m => m.mentor && m.mentor !== "N/A")?.mentor || members[0]?.mentor || "";
+
+    const memberCardsHTML = members.map((student, idx) => `
+        <div class="member-input-card" data-member-id="${student.id || ''}">
+            <div class="member-card-header">
+                <span class="member-card-title">👤 Member #${idx + 1}</span>
+                ${members.length > 1 ? `<button type="button" class="remove-member-btn">🗑️ Remove Item</button>` : ''}
+            </div>
+            <div class="member-card-grid">
+                <div class="form-group">
+                    <label>Student Name *</label>
+                    <input type="text" class="member-name-input" value="${escapeHTML(student.studentName || '')}" placeholder="Full student name">
+                </div>
+                <div class="form-group">
+                    <label>Participant No</label>
+                    <input type="text" class="participant-input" value="${escapeHTML(student.participantNo || '')}" placeholder="e.g. P101">
+                </div>
+                <div class="form-group">
+                    <label>Class / Division</label>
+                    <input type="text" class="class-input" value="${escapeHTML(student.classDivision || '')}" placeholder="e.g. Class 10 - A">
+                </div>
+                <div class="form-group">
+                    <label>Student Phone</label>
+                    <input type="tel" class="phone-input" value="${escapeHTML(student.studentPhone || '')}" placeholder="e.g. 9876543210">
+                </div>
+            </div>
+        </div>
+    `).join("");
+
+    teamsDiv.innerHTML = `
+        <div class="add-team-card">
+            <button id="backToTeamsBtn" class="back-btn" type="button">← Back to Teams</button>
+
+            <div class="form-header">
+                <h2>✏️ Edit Team Item: ${escapeHTML(originalTeamName)}</h2>
+                <p class="form-subtitle">Modify school, project title, mentor, or student participant details below</p>
+            </div>
+
+            <div class="form-section">
+                <h3>📌 Excel Header Information</h3>
+                <div class="team-details-grid">
+                    <div class="form-group">
+                        <label for="editTeamName">ID / Team ID *</label>
+                        <input type="text" id="editTeamName" value="${escapeHTML(originalTeamName)}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editSchool">SCHOOL NAME *</label>
+                        <input type="text" id="editSchool" value="${escapeHTML(school)}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editProject">PROJECT NAME</label>
+                        <input type="text" id="editProject" value="${escapeHTML(project)}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editMentor">MENTOR</label>
+                        <input type="text" id="editMentor" value="${escapeHTML(mentor)}">
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-section">
+                <div class="members-form-header">
+                    <h3>👥 Team Member Items</h3>
+                    <button id="addEditMemberBtn" class="add-member-btn" type="button">➕ Add Member Item</button>
+                </div>
+                <div id="editMembers">
+                    ${memberCardsHTML}
+                </div>
+            </div>
+
+            <div class="form-actions">
+                <button id="saveEditTeamBtn" class="save-team-btn" type="button">💾 Save Changes</button>
+                <button id="cancelEditBtn" class="cancel-team-btn" type="button">Cancel</button>
+            </div>
+        </div>
+    `;
+
+    document.getElementById("backToTeamsBtn")?.addEventListener("click", showTeams);
+    document.getElementById("cancelEditBtn")?.addEventListener("click", showTeams);
+
+    document.getElementById("addEditMemberBtn")?.addEventListener("click", () => {
+        const editMembersDiv = document.getElementById("editMembers");
+        const count = editMembersDiv.querySelectorAll(".member-input-card").length + 1;
+        editMembersDiv.insertAdjacentHTML("beforeend", createMemberInput(count));
+        bindRemoveMemberButtons();
+    });
+
+    bindRemoveMemberButtons();
+
+    document.getElementById("saveEditTeamBtn")?.addEventListener("click", () => {
+        saveEditedTeam(originalTeamName, members);
+    });
+}
+
+async function saveEditedTeam(originalTeamName, existingMembers) {
+    const newTeamNameInput = document.getElementById("editTeamName");
+    const schoolInput = document.getElementById("editSchool");
+    const projectInput = document.getElementById("editProject");
+    const mentorInput = document.getElementById("editMentor");
+    const saveButton = document.getElementById("saveEditTeamBtn");
+
+    if (!newTeamNameInput || !schoolInput) return;
+
+    const newTeamName = newTeamNameInput.value.trim();
+    const school = schoolInput.value.trim();
+    const project = projectInput.value.trim();
+    const mentor = mentorInput.value.trim();
+
+    if (!newTeamName || !school) {
+        alert("Please enter Team ID and School Name.");
+        return;
+    }
+
+    const memberCards = document.querySelectorAll("#editMembers .member-input-card");
+    const updatedMembers = [];
+
+    memberCards.forEach((card, idx) => {
+        const studentName = card.querySelector(".member-name-input")?.value.trim() || "";
+        const participantNo = card.querySelector(".participant-input")?.value.trim() || `P${idx + 1}`;
+        const classDivision = card.querySelector(".class-input")?.value.trim() || "";
+        const studentPhone = card.querySelector(".phone-input")?.value.trim() || "";
+
+        if (studentName) {
+            updatedMembers.push({
+                studentName,
+                participantNo,
+                classDivision,
+                studentPhone
+            });
+        }
+    });
+
+    if (updatedMembers.length === 0) {
+        alert("Please enter at least one member name.");
+        return;
+    }
+
+    try {
+        saveButton.disabled = true;
+        saveButton.textContent = "⏳ Updating Team Data...";
+
+        // Delete old student documents for this team if team name changed or list modified
+        for (const oldStudent of existingMembers) {
+            if (oldStudent.id) {
+                await deleteDoc(doc(db, "students", oldStudent.id));
+            }
+        }
+
+        // Re-write updated student documents to Firestore
+        for (let i = 0; i < updatedMembers.length; i++) {
+            const m = updatedMembers[i];
+            const safeTeam = newTeamName.replace(/[\/\s.#$\[\]]/g, "_");
+            const safeStudent = m.studentName.replace(/[\/\s.#$\[\]]/g, "_");
+            const studentId = `${safeTeam}_${safeStudent}_${i + 1}`;
+
+            const studentData = {
+                studentId,
+                teamName: newTeamName,
+                teamNo: newTeamName,
+                school,
+                projectTitle: project,
+                mentor,
+                studentName: m.studentName,
+                participantNo: m.participantNo,
+                classDivision: m.classDivision,
+                studentPhone: m.studentPhone,
+                verified: existingMembers[i]?.verified || false,
+                arrived: existingMembers[i]?.arrived || false,
+                updatedAt: new Date().toISOString()
+            };
+
+            await setDoc(doc(db, "students", studentId), studentData);
+        }
+
+        alert(`✅ Team "${newTeamName}" updated successfully!`);
+        showDashboard();
+        showTeams();
+
+    } catch (err) {
+        console.error("Save edit error:", err);
+        alert("Failed to update team: " + err.message);
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.textContent = "💾 Save Changes";
+        }
+    }
 }
 
 // ========================================
@@ -781,50 +1104,85 @@ function showTeam(teamName) {
         return;
     }
 
-    const school = members[0].school || "Not Available";
-    const project = members[0].projectTitle || "Not Available";
+    const school = members.find(m => m.school && m.school !== "N/A")?.school || members[0]?.school || "Not Available";
+    const project = members.find(m => m.projectTitle && m.projectTitle !== "N/A")?.projectTitle || members[0]?.projectTitle || "Not Available";
+    const mentor = members.find(m => m.mentor && m.mentor !== "N/A")?.mentor || members[0]?.mentor || "Not Available";
     const arrivedCount = members.filter(isVerified).length;
     const allArrived = members.length > 0 && arrivedCount === members.length;
 
     teamsDiv.innerHTML = `
-        <div class="details-card">
-            <button id="backBtn" class="back-btn" type="button">← Back</button>
-
-            <h2>${escapeHTML(teamName.toUpperCase())}</h2>
-
-            <div class="team-info">
-                <p><strong>School:</strong> ${escapeHTML(school)}</p>
-                <p><strong>Project:</strong> ${escapeHTML(project)}</p>
-            </div>
-
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h3>Team Members (${arrivedCount}/${members.length} Arrived)</h3>
-                <button id="markAllBtn" class="mark-all-btn" type="button">
-                    ${allArrived ? "❌ Mark All Unarrived" : "✅ Mark All Arrived"}
+        <div class="team-view-hero" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); color: white; padding: 32px 28px; border-radius: 24px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(49, 46, 129, 0.25);">
+            <div style="position: absolute; right: -20px; top: -20px; font-size: 140px; opacity: 0.08; pointer-events: none;">🚀</div>
+            
+            <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px;">
+                <button id="backBtn" class="back-btn" type="button" style="background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); margin-bottom: 0; padding: 10px 18px;">
+                    ← Back to Desk
                 </button>
+
+                <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
+                    <button id="markAllBtn" class="mark-all-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px; font-weight: 750;">
+                        ${allArrived ? "❌ Mark All Unarrived" : "✅ Mark All Arrived"}
+                    </button>
+                    <button id="editTeamBtn" class="edit-team-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px;">
+                        ✏️ Edit Team
+                    </button>
+                    <button id="reportBtn" class="report-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px;">
+                        🖨️ PDF Report
+                    </button>
+                    <button id="deleteTeamBtn" class="delete-team-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px;">
+                        🗑️ Delete
+                    </button>
+                </div>
             </div>
 
-            <div id="members"></div>
-
-            <div class="team-detail-actions">
-                <button id="reportBtn" class="report-btn" type="button">📄 Generate Report</button>
-                <button id="deleteTeamBtn" class="delete-team-btn" type="button">🗑️ Delete Team</button>
+            <div style="display: flex; align-items: center; gap: 12px; margin-bottom: 12px; flex-wrap: wrap;">
+                <span style="background: rgba(255,255,255,0.18); padding: 4px 14px; border-radius: 20px; font-size: 12px; font-weight: 800; letter-spacing: 0.5px; backdrop-filter: blur(10px);">
+                    TEAM ID
+                </span>
+                <span style="background: ${allArrived ? '#dcfce7' : arrivedCount > 0 ? '#fef3c7' : '#fee2e2'}; color: ${allArrived ? '#15803d' : arrivedCount > 0 ? '#b45309' : '#dc2626'}; padding: 4px 14px; border-radius: 20px; font-size: 12.5px; font-weight: 800;">
+                    ${arrivedCount}/${members.length} ARRIVED (${allArrived ? 'Completed' : arrivedCount > 0 ? 'Partial' : 'Pending'})
+                </span>
             </div>
+
+            <h1 style="font-size: 32px; font-weight: 900; margin: 0 0 16px 0; letter-spacing: -0.5px; text-shadow: 0 2px 10px rgba(0,0,0,0.2);">
+                ${escapeHTML(teamName.toUpperCase())}
+            </h1>
+
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; background: rgba(255, 255, 255, 0.08); padding: 18px 22px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px);">
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">School Name</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: white;">🏫 ${escapeHTML(school)}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">Project Title</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: #a5f3fc;">💡 ${escapeHTML(project)}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">Mentor / Guide</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: #fef08a;">👨‍🏫 ${escapeHTML(mentor)}</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="team-members-container" style="background: white; border-radius: 24px; padding: 28px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px dashed #f1f5f9; flex-wrap: wrap; gap: 10px;">
+                <h3 style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 0;">
+                    👥 Team Participant Members (${members.length} Members)
+                </h3>
+                <span style="color: var(--text-muted); font-size: 13px; font-weight: 600;">
+                    Click checkbox or card to update check-in status
+                </span>
+            </div>
+
+            <div id="members" style="display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px;"></div>
         </div>
     `;
 
     document.getElementById("backBtn")?.addEventListener("click", showTeams);
+    document.getElementById("editTeamBtn")?.addEventListener("click", () => showEditTeamForm(teamName));
+    document.getElementById("reportBtn")?.addEventListener("click", () => generateReport(teamName, school, project, members));
+    document.getElementById("deleteTeamBtn")?.addEventListener("click", () => deleteTeam(teamName));
 
-    // FIX: Attach event listener to report button!
-    document.getElementById("reportBtn")?.addEventListener("click", () => {
-        generateReport(teamName, school, project, members);
-    });
-
-    document.getElementById("deleteTeamBtn")?.addEventListener("click", () => {
-        deleteTeam(teamName);
-    });
-
-    // Mark All Arrived / Unarrived handler
     document.getElementById("markAllBtn")?.addEventListener("click", async () => {
         const targetValue = !allArrived;
         const markAllBtn = document.getElementById("markAllBtn");
@@ -835,9 +1193,7 @@ function showTeam(teamName) {
 
         try {
             for (const student of members) {
-                await updateDoc(doc(db, "students", student.id), {
-                    verified: targetValue
-                });
+                await updateDoc(doc(db, "students", student.id), { verified: targetValue });
                 student.verified = targetValue;
             }
             showDashboard();
@@ -852,37 +1208,62 @@ function showTeam(teamName) {
     const membersDiv = document.getElementById("members");
 
     members.forEach((student, index) => {
-        const memberDiv = document.createElement("div");
-        memberDiv.className = "member";
-
-        memberDiv.innerHTML = `
-            <div>
-                <div class="member-name">
-                    ${index + 1}. ${escapeHTML(student.studentName)}
-                </div>
-                <div class="member-id">
-                    Participant No: ${escapeHTML(student.participantNo || "N/A")}
-                </div>
-            </div>
-
-            <label class="arrived">
-                <input type="checkbox">
-                Arrived
-            </label>
+        const memberCard = document.createElement("div");
+        memberCard.className = "student-profile-card";
+        memberCard.style.cssText = `
+            background: ${isVerified(student) ? '#f0fdf4' : '#f8fafc'};
+            border: 1.5px solid ${isVerified(student) ? '#bbf7d0' : '#e2e8f0'};
+            border-radius: 18px;
+            padding: 20px;
+            transition: all 0.25s ease;
+            position: relative;
         `;
 
-        const checkbox = memberDiv.querySelector("input");
-        checkbox.checked = isVerified(student);
+        memberCard.innerHTML = `
+            <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <div style="width: 44px; height: 44px; border-radius: 14px; background: ${isVerified(student) ? '#dcfce7' : '#eef2ff'}; color: ${isVerified(student) ? '#16a34a' : '#4f46e5'}; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;">
+                        👤
+                    </div>
+                    <div>
+                        <h4 style="font-size: 15.5px; font-weight: 800; color: var(--text-primary); margin: 0 0 2px 0;">
+                            ${index + 1}. ${escapeHTML(student.studentName)}
+                        </h4>
+                        <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">
+                            ID: ${escapeHTML(student.participantNo || `P${index + 1}`)}
+                        </span>
+                    </div>
+                </div>
+
+                <span style="padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 800; background: ${isVerified(student) ? '#dcfce7' : '#fee2e2'}; color: ${isVerified(student) ? '#15803d' : '#b91c1c'};">
+                    ${isVerified(student) ? '✅ Arrived' : '⏳ Pending'}
+                </span>
+            </div>
+
+            ${student.studentPhone || student.classDivision ? `
+                <div style="margin: 10px 0 14px 0; font-size: 12.5px; color: #64748b; display: flex; gap: 12px; flex-wrap: wrap;">
+                    ${student.classDivision ? `<span>🏫 Class: <strong>${escapeHTML(student.classDivision)}</strong></span>` : ''}
+                    ${student.studentPhone ? `<span>📞 Phone: <strong>${escapeHTML(student.studentPhone)}</strong></span>` : ''}
+                </div>
+            ` : ''}
+
+            <div style="margin-top: 14px; padding-top: 12px; border-top: 1px dashed #e2e8f0; display: flex; justify-content: space-between; align-items: center;">
+                <span style="font-size: 12.5px; font-weight: 700; color: var(--text-secondary);">Attendance Check-In</span>
+                <label class="arrived-toggle" style="display: inline-flex; align-items: center; gap: 8px; cursor: pointer; font-weight: 750; font-size: 13px; color: ${isVerified(student) ? '#15803d' : '#475569'}; background: ${isVerified(student) ? '#dcfce7' : '#f1f5f9'}; padding: 6px 14px; border-radius: 20px;">
+                    <input type="checkbox" ${isVerified(student) ? 'checked' : ''} style="width: 16px; height: 16px; accent-color: var(--success); cursor: pointer;">
+                    <span>${isVerified(student) ? 'Checked In' : 'Check In'}</span>
+                </label>
+            </div>
+        `;
+
+        const checkbox = memberCard.querySelector("input");
 
         checkbox.addEventListener("change", async () => {
             const newValue = checkbox.checked;
             checkbox.disabled = true;
 
             try {
-                await updateDoc(doc(db, "students", student.id), {
-                    verified: newValue
-                });
-
+                await updateDoc(doc(db, "students", student.id), { verified: newValue });
                 student.verified = newValue;
                 showDashboard();
                 showTeam(teamName);
@@ -894,7 +1275,7 @@ function showTeam(teamName) {
             }
         });
 
-        membersDiv.appendChild(memberDiv);
+        membersDiv.appendChild(memberCard);
     });
 }
 
@@ -1631,6 +2012,34 @@ function exportToCSV() {
 }
 
 // ========================================
+// CLEAR ALL DATABASE RECORDS
+// ========================================
+
+async function clearAllDatabaseRecords() {
+    const confirmed = confirm(
+        "⚠️ CRITICAL WARNING: Are you sure you want to DELETE ALL DATABASE RECORDS COMPLETELY?\n\n" +
+        "This will permanently erase all registered teams, students, schools, projects, and check-in records from Firebase Firestore."
+    );
+    if (!confirmed) return;
+
+    try {
+        const snapshot = await getDocs(studentsCollection);
+        let count = 0;
+        for (const docSnap of snapshot.docs) {
+            await deleteDoc(doc(db, "students", docSnap.id));
+            count++;
+        }
+        alert(`✅ Database completely cleared! (${count} records permanently deleted).`);
+        allStudents = [];
+        showDashboard();
+        showTeams();
+    } catch (error) {
+        console.error("CLEAR DB ERROR:", error);
+        alert("Failed to clear database: " + error.message);
+    }
+}
+
+// ========================================
 // BUTTON EVENTS
 // ========================================
 
@@ -1641,6 +2050,7 @@ overallReportButton?.addEventListener(
 
 document.getElementById("exportExcelBtn")?.addEventListener("click", exportToExcel);
 document.getElementById("exportCsvBtn")?.addEventListener("click", exportToCSV);
+document.getElementById("clearDbBtn")?.addEventListener("click", clearAllDatabaseRecords);
 
 // ========================================
 // START APPLICATION

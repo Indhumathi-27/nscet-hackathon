@@ -27,21 +27,47 @@
         </div>
     </header>
 
-    <main class="container">
-        <div class="card" style="max-width: 720px; margin: auto;">
-            <h2>📥 Import Student Excel Sheet</h2>
-            <p>Upload the official Excel spreadsheet containing student registration details.</p>
-
-            <div class="file-drop-area">
-                <div class="file-icon">📄</div>
-                <label for="excelFile"><strong>Choose Excel file (.xlsx, .xls)</strong></label>
-                <br><br>
-                <input type="file" id="excelFile" accept=".xlsx,.xls">
+    <main class="container" style="max-width: 860px;">
+        <div class="details-card">
+            <div class="form-header">
+                <h2>📥 Import Student Excel Sheet</h2>
+                <p class="form-subtitle">Upload the official Excel spreadsheet (.xlsx, .xls, .csv) containing student registration details.</p>
             </div>
 
-            <button id="importBtn" class="overall-report-btn" style="width: 100%; justify-content: center; padding: 14px;">🚀 Import Students to Firebase</button>
+            <div class="file-drop-area" id="dropArea">
+                <div class="file-icon">📊</div>
+                <h3 style="font-size: 17px; font-weight: 800; color: var(--text-primary);">Drag & Drop Excel File Here</h3>
+                <p style="color: var(--text-muted); font-size: 13px; margin: 6px 0 16px;">Supports .xlsx, .xls, or .csv files</p>
+                <label for="excelFile" class="add-team-btn" style="cursor: pointer; display: inline-flex;">📁 Browse File</label>
+                <input type="file" id="excelFile" accept=".xlsx,.xls,.csv" style="display: none;">
+                <div id="fileDetails" style="margin-top: 14px; font-weight: 700; color: var(--primary); font-size: 13.5px;"></div>
+            </div>
 
-            <div id="status"></div>
+            <div id="previewSection" style="display: none; margin-top: 24px;">
+                <h3 style="font-size: 15px; margin-bottom: 12px; color: var(--text-primary);">👁️ Data Preview (First 5 Rows)</h3>
+                <div class="table-wrapper" style="max-height: 220px; overflow-y: auto;">
+                    <table class="teams-table" id="previewTable">
+                        <thead></thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div id="progressWrapper" style="display: none; margin-top: 20px;">
+                <div style="display: flex; justify-content: space-between; font-size: 13px; font-weight: 700; margin-bottom: 6px; color: var(--text-secondary);">
+                    <span id="progressText">Uploading to Firebase...</span>
+                    <span id="progressPercent">0%</span>
+                </div>
+                <div style="background: #e2e8f0; border-radius: 10px; height: 10px; overflow: hidden;">
+                    <div id="progressBar" style="background: linear-gradient(90deg, #4f46e5, #10b981); height: 100%; width: 0%; transition: width 0.2s ease;"></div>
+                </div>
+            </div>
+
+            <div id="status" style="margin-top: 20px;"></div>
+
+            <button id="importBtn" class="save-team-btn" style="width: 100%; justify-content: center; padding: 14px; margin-top: 20px; font-size: 15px;">
+                🚀 Start Firebase Import
+            </button>
         </div>
     </main>
 

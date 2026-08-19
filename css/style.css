@@ -826,3 +826,174 @@ button {
     font-weight: 700;
     font-size: 14px;
 }
+
+/* ========================================
+   EXCEL IMPORT STYLES
+======================================== */
+.file-drop-area {
+    border: 2px dashed #cbd5e1;
+    border-radius: 20px;
+    padding: 36px 20px;
+    text-align: center;
+    background: #f8fafc;
+    transition: all 0.25s ease;
+}
+
+.file-drop-area.highlight, .file-drop-area:hover {
+    border-color: var(--primary);
+    background: var(--primary-light);
+}
+
+.file-icon {
+    font-size: 44px;
+    margin-bottom: 8px;
+}
+
+.status-banner {
+    padding: 14px 18px;
+    border-radius: 12px;
+    font-weight: 700;
+    font-size: 14px;
+}
+
+.status-info {
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+}
+
+.status-success {
+    background: #dcfce7;
+    color: #15803d;
+    border: 1px solid #bbf7d0;
+}
+
+.status-error {
+    background: #fee2e2;
+    color: #b91c1c;
+    border: 1px solid #fecaca;
+}
+
+.edit-team-btn {
+    padding: 6px 14px;
+    background: #e0f2fe;
+    color: #0369a1;
+    border: 1px solid #bae6fd;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.edit-team-btn:hover {
+    background: #0284c7;
+    color: white;
+    border-color: #0284c7;
+}
+
+/* ========================================
+   MOBILE RESPONSIVE ENHANCEMENTS
+======================================== */
+
+@media (max-width: 768px) {
+    .header-content {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 16px;
+    }
+
+    .brand-section {
+        justify-content: center;
+    }
+
+    .nav-links {
+        justify-content: center;
+        overflow-x: auto;
+        padding-bottom: 4px;
+        width: 100%;
+    }
+
+    .nav-link {
+        padding: 8px 14px;
+        font-size: 13px;
+        white-space: nowrap;
+    }
+
+    .stat-cards-grid {
+        grid-template-columns: repeat(2, 1fr) !important;
+        gap: 12px !important;
+    }
+
+    .search-filter-bar {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .filter-pills {
+        overflow-x: auto;
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .filter-pill {
+        white-space: nowrap;
+    }
+
+    .team-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 12px;
+    }
+
+    .header-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+
+    .team-view-hero {
+        padding: 24px 18px !important;
+    }
+
+    .team-view-hero h1 {
+        font-size: 24px !important;
+    }
+
+    .team-members-container {
+        padding: 20px !important;
+    }
+
+    .table-wrapper {
+        -webkit-overflow-scrolling: touch;
+    }
+}
+
+@media (max-width: 480px) {
+    .container {
+        padding: 12px 10px;
+    }
+
+    .stat-cards-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .stat-card {
+        padding: 16px !important;
+    }
+
+    .details-card, .add-team-card {
+        padding: 20px 14px;
+        border-radius: 16px;
+    }
+
+    .member-card-grid, .team-details-grid {
+        grid-template-columns: 1fr !important;
+    }
+
+    .team-actions {
+        flex-wrap: wrap;
+    }
+}
