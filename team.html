@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>Team Details</title>
+
+    <style>
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f4f6f8;
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 700px;
+            margin: auto;
+        }
+
+        .box {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 15px;
+        }
+
+        .member {
+            border-top: 1px solid #ddd;
+            padding: 15px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        button {
+            padding: 10px 18px;
+            border: none;
+            border-radius: 6px;
+            background: #2563eb;
+            color: white;
+            cursor: pointer;
+        }
+
+        .back {
+            background: #555;
+            margin-bottom: 15px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <button class="back"
+            onclick="location.href='teams.html'">
+        ← Back
+    </button>
+
+
+    <div class="box">
+
+        <h2 id="teamNo">Loading...</h2>
+
+        <p>
+            <b>School:</b>
+            <span id="school"></span>
+        </p>
+
+        <p>
+            <b>Project:</b>
+            <span id="project"></span>
+        </p>
+
+    </div>
+
+
+    <div class="box">
+
+        <h3>Team Members</h3>
+
+        <div id="members">
+            Loading...
+        </div>
+
+    </div>
+
+
+    <button onclick="generateReport()">
+        Generate Report
+    </button>
+
+</div>
+
+
+<script type="module" src="js/team.js"></script>
+
+</body>
+
+</html>

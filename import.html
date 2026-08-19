@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+    <title>NSCET Student Hackathon</title>
+</head>
+
+<body>
+
+    <h1>NSCET Student Hackathon</h1>
+
+    <h2>Import Student Excel</h2>
+
+    <input
+        type="file"
+        id="excelFile"
+        accept=".xlsx,.xls"
+    >
+
+    <br><br>
+
+    <button id="importBtn">
+        Import Students
+    </button>
+
+    <p id="status"></p>
+
+    <!-- Excel library -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
+
+    <!-- Our JavaScript -->
+    <script type="module" src="js/import.js"></script>
+
+</body>
+
+</html>

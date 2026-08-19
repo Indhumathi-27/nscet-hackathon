@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+
+    <meta charset="UTF-8">
+
+    <meta name="viewport"
+          content="width=device-width, initial-scale=1.0">
+
+    <title>NSCET INNOVATE 24 - Dashboard</title>
+
+
+    <style>
+
+        * {
+            box-sizing: border-box;
+        }
+
+
+        body {
+
+            margin: 0;
+
+            font-family:
+                Arial,
+                Helvetica,
+                sans-serif;
+
+            background: #f1f5f9;
+
+            color: #1e293b;
+
+        }
+
+
+        /* HEADER */
+
+        .header {
+
+            background: #1e3a8a;
+
+            color: white;
+
+            padding: 25px;
+
+        }
+
+
+        .header h1 {
+
+            margin: 0;
+
+            font-size: 26px;
+
+        }
+
+
+        .header p {
+
+            margin: 7px 0 0;
+
+            opacity: 0.9;
+
+        }
+
+
+        /* CONTAINER */
+
+        .container {
+
+            width: 92%;
+
+            max-width: 1100px;
+
+            margin: 35px auto;
+
+        }
+
+
+        .title {
+
+            margin-bottom: 25px;
+
+        }
+
+
+        .title h2 {
+
+            margin: 0;
+
+        }
+
+
+        .title p {
+
+            color: #64748b;
+
+        }
+
+
+        /* DASHBOARD GRID */
+
+        .dashboard {
+
+            display: grid;
+
+            grid-template-columns:
+                repeat(
+                    auto-fit,
+                    minmax(200px, 1fr)
+                );
+
+            gap: 20px;
+
+        }
+
+
+        /* CARD */
+
+        .card {
+
+            background: white;
+
+            padding: 25px;
+
+            border-radius: 12px;
+
+            border:
+                1px solid #e2e8f0;
+
+            box-shadow:
+                0 3px 10px
+                rgba(0,0,0,0.05);
+
+        }
+
+
+        .card-title {
+
+            color: #64748b;
+
+            font-size: 14px;
+
+            margin-bottom: 10px;
+
+        }
+
+
+        .card-number {
+
+            font-size: 34px;
+
+            font-weight: bold;
+
+            color: #1e3a8a;
+
+        }
+
+
+        /* RESPONSIVE */
+
+        @media (max-width: 600px) {
+
+            .container {
+
+                width: 94%;
+
+            }
+
+
+            .header h1 {
+
+                font-size: 22px;
+
+            }
+
+        }
+
+    </style>
+
+</head>
+
+
+<body>
+
+
+    <header class="header">
+
+        <h1>
+            NSCET INNOVATE 24
+        </h1>
+
+        <p>
+            Registration Dashboard
+        </p>
+
+    </header>
+
+
+    <main class="container">
+
+
+        <div class="title">
+
+            <h2>
+                Dashboard
+            </h2>
+
+            <p>
+                Hackathon Registration Overview
+            </p>
+
+        </div>
+
+
+        <div class="dashboard">
+
+
+            <!-- TOTAL TEAMS -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Total Teams
+                </div>
+
+                <div
+                    class="card-number"
+                    id="totalTeams">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <!-- ARRIVED TEAMS -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Arrived Teams
+                </div>
+
+                <div
+                    class="card-number"
+                    id="arrivedTeams">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <!-- PENDING TEAMS -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Pending Teams
+                </div>
+
+                <div
+                    class="card-number"
+                    id="pendingTeams">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <!-- TOTAL STUDENTS -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Total Students
+                </div>
+
+                <div
+                    class="card-number"
+                    id="totalStudents">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+            <!-- TOTAL SCHOOLS -->
+
+            <div class="card">
+
+                <div class="card-title">
+                    Total Schools
+                </div>
+
+                <div
+                    class="card-number"
+                    id="totalSchools">
+
+                    0
+
+                </div>
+
+            </div>
+
+
+        </div>
+
+
+    </main>
+
+
+    <script
+        type="module"
+        src="./js/dashboard.js">
+    </script>
+
+
+</body>
+
+</html>
