@@ -39,23 +39,26 @@ function escapeHTML(value = "") {
 }
 
 function getStudentTeam(student) {
+    if (!student) return "General Registration";
     const team = (
         student.teamName ||
         student.teamNo ||
         student.Form ||
+        student.team_name ||
         student.team ||
         student.T ||
         ""
     ).trim();
 
     if (team) return team;
-    if (student.school && student.school.trim() && student.school.trim() !== "N/A") {
-        return `School: ${student.school.trim()}`;
+    if (student.school && String(student.school).trim() && String(student.school).trim() !== "N/A") {
+        return `School: ${String(student.school).trim()}`;
     }
     return "General Registration";
 }
 
 function isVerified(student) {
+    if (!student) return false;
     return (
         student.verified === true ||
         student.verified === "true" ||
@@ -127,7 +130,7 @@ function showDashboard() {
 
     const totalSchools = new Set(
         allStudents
-            .map(student => student.school?.trim())
+            .map(student => student.school ? String(student.school).trim() : null)
             .filter(Boolean)
     ).size;
 
@@ -170,6 +173,182 @@ function showDashboard() {
             }
         }
     );
+
+    setupSchoolsModal(allStudents);
+    setupStudentsModal(allStudents);
+}
+
+function setupStudentsModal(students) {
+    const studentsCard = document.getElementById("studentsStatCard");
+    const studentsModal = document.getElementById("studentsModal");
+    const closeBtn = document.getElementById("closeStudentsModalBtn");
+    const tableBody = document.getElementById("studentsTableBody");
+    const searchInput = document.getElementById("studentSearchInput");
+
+    if (!studentsCard || !studentsModal || !tableBody) return;
+
+    function renderStudentsTable(filterQuery = "") {
+        const query = filterQuery.toLowerCase();
+
+        const filtered = students.filter(s => {
+            const name = String(s.studentName || "").toLowerCase();
+            const school = String(s.school || "").toLowerCase();
+            const team = String(s.teamTitle || s.customTeamName || s.team_name || s.teamName || "").toLowerCase();
+            return name.includes(query) || school.includes(query) || team.includes(query);
+        });
+
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted); font-weight: 600;">
+                        No student records found matching "${escapeHTML(filterQuery)}".
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = filtered.map((s, idx) => {
+            const studentName = s.studentName || "Unnamed Participant";
+            const schoolName = s.school && s.school !== "N/A" ? s.school : "N/A";
+            const teamTitle = s.teamTitle || s.customTeamName || s.team_name || s.teamName || "N/A";
+            const arrived = isVerified(s);
+
+            return `
+                <tr>
+                    <td style="font-weight: 800; color: #2563eb;">${idx + 1}</td>
+                    <td style="font-weight: 800; color: var(--text-primary);">
+                        ${escapeHTML(studentName)}
+                        ${s.participantNo ? `<div style="font-size: 11.5px; color: var(--text-muted); font-weight: 600;">ID: ${escapeHTML(s.participantNo)}</div>` : ''}
+                    </td>
+                    <td style="font-weight: 600; color: var(--text-secondary); max-width: 240px; line-height: 1.4;">${escapeHTML(schoolName)}</td>
+                    <td>
+                        <span class="team-badge">
+                            <span class="team-dot"></span>
+                            ${escapeHTML(String(teamTitle).toUpperCase())}
+                        </span>
+                    </td>
+                    <td>
+                        <span class="status ${arrived ? 'completed' : 'pending'}">
+                            ${arrived ? 'Arrived' : 'Not Arrived'}
+                        </span>
+                    </td>
+                </tr>
+            `;
+        }).join("");
+    }
+
+    studentsCard.onclick = () => {
+        renderStudentsTable();
+        studentsModal.classList.add("active");
+    };
+
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            studentsModal.classList.remove("active");
+        };
+    }
+
+    studentsModal.onclick = (e) => {
+        if (e.target === studentsModal) {
+            studentsModal.classList.remove("active");
+        }
+    };
+
+    if (searchInput) {
+        searchInput.oninput = (e) => {
+            renderStudentsTable(e.target.value.trim());
+        };
+    }
+}
+
+function setupSchoolsModal(students) {
+    const schoolsCard = document.getElementById("schoolsStatCard");
+    const schoolsModal = document.getElementById("schoolsModal");
+    const closeBtn = document.getElementById("closeSchoolsModalBtn");
+    const tableBody = document.getElementById("schoolsTableBody");
+    const searchInput = document.getElementById("schoolSearchInput");
+
+    if (!schoolsCard || !schoolsModal || !tableBody) return;
+
+    const schoolMap = {};
+    students.forEach(student => {
+        const schoolName = String(student.school || "").trim();
+        if (!schoolName || schoolName === "N/A") return;
+
+        if (!schoolMap[schoolName]) {
+            schoolMap[schoolName] = {
+                schoolName,
+                teams: new Set(),
+                totalStudents: 0,
+                arrivedStudents: 0
+            };
+        }
+
+        const teamName = getStudentTeam(student);
+        schoolMap[schoolName].teams.add(teamName);
+        schoolMap[schoolName].totalStudents += 1;
+
+        if (isVerified(student)) {
+            schoolMap[schoolName].arrivedStudents += 1;
+        }
+    });
+
+    const schoolsList = Object.values(schoolMap).sort((a, b) => b.totalStudents - a.totalStudents);
+
+    function renderSchoolsTable(filterQuery = "") {
+        const filtered = schoolsList.filter(item => 
+            item.schoolName.toLowerCase().includes(filterQuery.toLowerCase())
+        );
+
+        if (filtered.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted); font-weight: 600;">
+                        No schools found matching search criteria.
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+
+        tableBody.innerHTML = filtered.map((item, idx) => `
+            <tr>
+                <td style="font-weight: 800; color: #2563eb;">${idx + 1}</td>
+                <td style="font-weight: 700; color: var(--text-primary); max-width: 280px; line-height: 1.4;">${escapeHTML(item.schoolName)}</td>
+                <td><span class="member-count">${item.teams.size} ${item.teams.size === 1 ? 'Team' : 'Teams'}</span></td>
+                <td><span style="font-weight: 800; color: var(--text-primary); font-size: 14.5px;">${item.totalStudents} Students</span></td>
+                <td>
+                    <span class="status ${item.arrivedStudents === item.totalStudents && item.totalStudents > 0 ? 'completed' : item.arrivedStudents > 0 ? 'partial' : 'pending'}">
+                        ${item.arrivedStudents} / ${item.totalStudents} Arrived
+                    </span>
+                </td>
+            </tr>
+        `).join("");
+    }
+
+    schoolsCard.onclick = () => {
+        renderSchoolsTable();
+        schoolsModal.classList.add("active");
+    };
+
+    if (closeBtn) {
+        closeBtn.onclick = () => {
+            schoolsModal.classList.remove("active");
+        };
+    }
+
+    schoolsModal.onclick = (e) => {
+        if (e.target === schoolsModal) {
+            schoolsModal.classList.remove("active");
+        }
+    };
+
+    if (searchInput) {
+        searchInput.oninput = (e) => {
+            renderSchoolsTable(e.target.value.trim());
+        };
+    }
 }
 
 // ========================================
@@ -180,8 +359,8 @@ function createMemberInput(number) {
     return `
         <div class="member-input-card" data-member-index="${number}">
             <div class="member-card-header">
-                <span class="member-card-title">👤 Member Item #${number}</span>
-                ${number > 1 ? `<button type="button" class="remove-member-btn">🗑️ Remove Item</button>` : ''}
+                <span class="member-card-title">Member Item #${number}</span>
+                ${number > 1 ? `<button type="button" class="remove-member-btn">Remove Item</button>` : ''}
             </div>
 
             <div class="member-card-grid">
@@ -227,17 +406,22 @@ function showAddTeamForm() {
             </button>
 
             <div class="form-header">
-                <h2>➕ Add New Team Item</h2>
+                <h2>Add New Team Item</h2>
                 <p class="form-subtitle">Register a team using fields matching your official Excel spreadsheet format</p>
             </div>
 
             <div class="form-section">
-                <h3>📌 Excel Header Information</h3>
+                <h3>Excel Header Information</h3>
 
                 <div class="team-details-grid">
                     <div class="form-group">
-                        <label for="newTeamName">ID / Team ID (Matches Excel 'ID') *</label>
-                        <input type="text" id="newTeamName" placeholder="e.g. NSCET-008" value="${escapeHTML(defaultTeamId)}">
+                        <label for="newTeamId">ID / Team ID (Matches Excel 'ID') *</label>
+                        <input type="text" id="newTeamId" placeholder="e.g. NSCET-008" value="${escapeHTML(defaultTeamId)}">
+                    </div>
+
+                    <div class="form-group">
+                        <label for="newTeamName">TEAM NAME *</label>
+                        <input type="text" id="newTeamName" placeholder="e.g. Code Craft / Tech Titans">
                     </div>
 
                     <div class="form-group">
@@ -254,19 +438,28 @@ function showAddTeamForm() {
                         <label for="newMentor">MENTOR</label>
                         <input type="text" id="newMentor" placeholder="e.g. S. Dhanalakshmi / 9698713423">
                     </div>
+
+                    <div class="form-group">
+                        <label for="newCategory">CATEGORY</label>
+                        <select id="newCategory" style="width: 100%; padding: 11px 16px; border: 1.5px solid var(--border-color); border-radius: 12px; font-size: 14.5px; font-weight: 600; color: var(--text-primary); outline: none;">
+                            <option value="">Select Category</option>
+                            <option value="Software">Software</option>
+                            <option value="Hardware">Hardware</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div class="form-section">
                 <div class="members-form-header">
-                    <h3>👥 Team Member Items (NO OF MEMBERS: 4)</h3>
+                    <h3>Team Member Items (NO OF MEMBERS: 4)</h3>
 
                     <button
                         id="addMemberBtn"
                         class="add-member-btn"
                         type="button"
                     >
-                        ➕ Add Member Item
+                        Add Member Item
                     </button>
                 </div>
 
@@ -284,7 +477,7 @@ function showAddTeamForm() {
                     class="save-team-btn"
                     type="button"
                 >
-                    💾 Save Team Item
+                    Save Team Item
                 </button>
 
                 <button
@@ -354,7 +547,7 @@ function renumberMemberCards() {
     cards.forEach((card, index) => {
         const title = card.querySelector(".member-card-title");
         if (title) {
-            title.textContent = `👤 Member Item #${index + 1}`;
+            title.textContent = `Member Item #${index + 1}`;
         }
     });
 }
@@ -378,6 +571,7 @@ function addMemberInput() {
 // ========================================
 
 async function saveNewTeam() {
+    const teamIdInput = document.getElementById("newTeamId") || document.getElementById("newTeamName");
     const teamNameInput = document.getElementById("newTeamName");
     const schoolInput = document.getElementById("newSchool");
     const projectInput = document.getElementById("newProject");
@@ -385,16 +579,27 @@ async function saveNewTeam() {
     const messageDiv = document.getElementById("addTeamMessage");
     const saveButton = document.getElementById("saveTeamBtn");
 
-    if (!teamNameInput || !schoolInput) return;
+    if (!teamIdInput || !schoolInput) return;
 
-    const teamName = teamNameInput.value.trim();
+    const rawTeamId = teamIdInput.value.trim();
+    const rawTeamName = teamNameInput ? teamNameInput.value.trim() : rawTeamId;
+    const teamId = rawTeamId || rawTeamName;
+    const teamName = rawTeamName || rawTeamId;
     const school = schoolInput.value.trim();
     const project = projectInput?.value.trim() || "";
     const mentor = mentorInput?.value.trim() || "";
+    const categoryInput = document.getElementById("newCategory");
+    const category = categoryInput?.value || "";
+
+    if (!teamId) {
+        alert("Please enter Team ID.");
+        teamIdInput.focus();
+        return;
+    }
 
     if (!teamName) {
-        alert("Please enter team name.");
-        teamNameInput.focus();
+        alert("Please enter Team Name.");
+        if (teamNameInput) teamNameInput.focus();
         return;
     }
 
@@ -430,16 +635,19 @@ async function saveNewTeam() {
 
     try {
         saveButton.disabled = true;
-        saveButton.textContent = "⏳ Saving Team Item...";
+        saveButton.textContent = "Saving Team Item...";
 
         for (let i = 0; i < validMembers.length; i++) {
             const member = validMembers[i];
-            const studentId = `${teamName}_${member.participantNo || i + 1}`.replace(/\s+/g, "_");
+            const studentId = `${teamId}_${member.participantNo || i + 1}`.replace(/\s+/g, "_");
 
             const newStudent = {
                 studentId,
-                teamName,
-                teamNo: teamName,
+                teamName: teamId,
+                teamId: teamId,
+                teamNo: teamId,
+                teamTitle: teamName,
+                customTeamName: teamName,
                 school,
                 projectTitle: project,
                 mentor,
@@ -447,6 +655,7 @@ async function saveNewTeam() {
                 participantNo: member.participantNo,
                 classDivision: member.classDivision,
                 studentPhone: member.studentPhone,
+                category,
                 verified: false,
                 arrived: false,
                 createdAt: new Date().toISOString()
@@ -461,7 +670,7 @@ async function saveNewTeam() {
 
         messageDiv.innerHTML = `
             <div class="success-message">
-                ✅ Team Item "${escapeHTML(teamName)}" with ${validMembers.length} member(s) saved successfully!
+                Team Item "${escapeHTML(teamName)}" with ${validMembers.length} member(s) saved successfully!
             </div>
         `;
 
@@ -472,11 +681,11 @@ async function saveNewTeam() {
         console.error("SAVE TEAM ERROR:", error);
         messageDiv.innerHTML = `
             <div class="firebase-error">
-                ❌ Failed to save team: ${escapeHTML(error.message)}
+                Failed to save team: ${escapeHTML(error.message)}
             </div>
         `;
         saveButton.disabled = false;
-        saveButton.textContent = "💾 Save Team Item";
+        saveButton.textContent = "Save Team Item";
     }
 }
 
@@ -489,7 +698,7 @@ async function deleteTeam(teamName) {
 
     const teamMembers = allStudents.filter(
         student =>
-            student.teamName?.trim() === teamName
+            (student.teamName ? String(student.teamName).trim() : "") === teamName
     );
 
     if (teamMembers.length === 0) {
@@ -531,7 +740,7 @@ async function deleteTeam(teamName) {
         allStudents =
             allStudents.filter(
                 student =>
-                    student.teamName?.trim() !== teamName
+                    (student.teamName ? String(student.teamName).trim() : "") !== teamName
             );
 
         console.log(
@@ -693,25 +902,25 @@ function showTeams() {
 
     teamsDiv.innerHTML = `
         <div class="team-header">
-            <h2>📋 Registered Teams (${filteredTeamNames.length} of ${allTeamNames.length})</h2>
+            <h2>Registered Teams (${filteredTeamNames.length} of ${allTeamNames.length})</h2>
 
             <button
                 id="addTeamBtn"
                 class="add-team-btn"
                 type="button"
             >
-                ➕ Add Team
+                Add Team
             </button>
         </div>
 
         <div class="search-filter-bar">
             <div class="search-input-wrapper">
-                <span class="search-icon">🔍</span>
                 <input
                     type="text"
                     id="teamSearchInput"
                     placeholder="Search team name, student, school, project..."
                     value="${escapeHTML(searchQuery)}"
+                    style="padding-left: 16px;"
                 >
                 ${searchQuery ? `<button id="clearSearchBtn" class="search-clear-btn" type="button" title="Clear search">✕</button>` : ''}
             </div>
@@ -764,14 +973,13 @@ function showTeams() {
                 "beforeend",
                 `
                     <div class="empty-state-card" style="text-align: center; padding: 40px 20px; background: #f8fafc; border-radius: 20px; border: 2px dashed #cbd5e1; margin-top: 20px;">
-                        <div style="font-size: 48px; margin-bottom: 12px;">📭</div>
                         <h3 style="font-size: 19px; font-weight: 800; color: #1e293b; margin-bottom: 6px;">No Registered Teams Found in Firebase</h3>
                         <p style="color: #64748b; font-size: 14px; max-width: 520px; margin: 0 auto 22px; line-height: 1.5;">
                             Your Firebase database is currently empty. Upload an Excel spreadsheet or click below to populate sample demo teams instantly!
                         </p>
                         <div style="display: flex; gap: 12px; justify-content: center; flex-wrap: wrap;">
-                            <a href="import.html" class="save-team-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 11px 20px;">📥 Import Excel Sheet</a>
-                            <button id="seedSampleDataBtn" class="add-team-btn" type="button" style="background: #10b981; padding: 11px 20px;">🌱 Add Sample Demo Teams</button>
+                            <a href="import.html" class="save-team-btn" style="text-decoration: none; display: inline-flex; align-items: center; gap: 6px; padding: 11px 20px;">Import Excel Sheet</a>
+                            <button id="seedSampleDataBtn" class="add-team-btn" type="button" style="background: #10b981; padding: 11px 20px;">Add Sample Demo Teams</button>
                         </div>
                     </div>
                 `
@@ -783,7 +991,7 @@ function showTeams() {
                 "beforeend",
                 `
                     <p class="empty-message" style="text-align: center; padding: 30px; color: #64748b; font-weight: 600;">
-                        🔍 No teams matching filter criteria found.
+                        No teams matching filter criteria found.
                     </p>
                 `
             );
@@ -803,6 +1011,7 @@ function showTeams() {
                 <th>NO OF MEMBERS</th>
                 <th>SCHOOL NAME</th>
                 <th>PROJECT NAME</th>
+                <th>CATEGORY</th>
                 <th>MENTOR</th>
                 <th>STATUS</th>
                 <th>ACTION</th>
@@ -818,11 +1027,15 @@ function showTeams() {
         const members = allStudents.filter(
             student => getStudentTeam(student) === teamName
         );
-
         const firstMember = members[0] || {};
         const teamId = teamName;
+        const teamTitle = members.find(m => m.teamTitle || m.customTeamName || m.team_name)?.teamTitle || 
+                          members.find(m => m.customTeamName)?.customTeamName || 
+                          members.find(m => m.team_name)?.team_name || 
+                          teamName;
         const school = members.find(m => m.school && m.school !== "N/A")?.school || firstMember.school || "N/A";
         const project = members.find(m => m.projectTitle && m.projectTitle !== "N/A")?.projectTitle || firstMember.projectTitle || "N/A";
+        const category = members.find(m => m.category && m.category !== "N/A")?.category || firstMember.category || "N/A";
         const mentor = members.find(m => m.mentor && m.mentor !== "N/A")?.mentor || firstMember.mentor || "N/A";
 
         const totalMembers = members.length;
@@ -840,26 +1053,27 @@ function showTeams() {
         const row = document.createElement("tr");
 
         row.innerHTML = `
-            <td><strong>${index + 1}</strong></td>
-            <td><code style="background: #f1f5f9; padding: 4px 8px; border-radius: 6px; font-size: 12px; color: #475569; font-weight: 600;">${escapeHTML(teamId)}</code></td>
+            <td style="font-weight: 800; color: #2563eb;">${index + 1}</td>
+            <td><code class="team-id-code">${escapeHTML(teamId)}</code></td>
             <td>
                 <span class="team-badge">
                     <span class="team-dot"></span>
-                    ${escapeHTML(teamName.toUpperCase())}
+                    ${escapeHTML(teamTitle.toUpperCase())}
                 </span>
             </td>
             <td>
-                <span class="member-count">👥 ${totalMembers}</span>
+                <span class="member-count">${totalMembers} Members</span>
             </td>
-            <td>${escapeHTML(school)}</td>
-            <td>${escapeHTML(project)}</td>
-            <td>${escapeHTML(mentor)}</td>
+            <td style="color: var(--text-primary); font-weight: 600; max-width: 240px; line-height: 1.5;">${escapeHTML(school)}</td>
+            <td style="color: #0284c7; font-weight: 700; max-width: 200px;">${escapeHTML(project)}</td>
+            <td style="color: #6366f1; font-weight: 700;">${escapeHTML(category)}</td>
+            <td style="color: var(--text-secondary); font-weight: 600; white-space: nowrap;">${escapeHTML(mentor)}</td>
             <td>${statusHTML}</td>
             <td>
                 <div class="team-actions">
                     <button class="view-btn" type="button">View</button>
-                    <button class="edit-team-btn" type="button">✏️ Edit</button>
-                    <button class="delete-team-btn" type="button">🗑️ Delete</button>
+                    <button class="edit-team-btn" type="button">Edit</button>
+                    <button class="delete-team-btn" type="button">Delete</button>
                 </div>
             </td>
         `;
@@ -904,8 +1118,8 @@ function showEditTeamForm(originalTeamName) {
     const memberCardsHTML = members.map((student, idx) => `
         <div class="member-input-card" data-member-id="${student.id || ''}">
             <div class="member-card-header">
-                <span class="member-card-title">👤 Member #${idx + 1}</span>
-                ${members.length > 1 ? `<button type="button" class="remove-member-btn">🗑️ Remove Item</button>` : ''}
+                <span class="member-card-title">Member #${idx + 1}</span>
+                ${members.length > 1 ? `<button type="button" class="remove-member-btn">Remove Item</button>` : ''}
             </div>
             <div class="member-card-grid">
                 <div class="form-group">
@@ -933,16 +1147,20 @@ function showEditTeamForm(originalTeamName) {
             <button id="backToTeamsBtn" class="back-btn" type="button">← Back to Teams</button>
 
             <div class="form-header">
-                <h2>✏️ Edit Team Item: ${escapeHTML(originalTeamName)}</h2>
+                <h2>Edit Team Item: ${escapeHTML(originalTeamName)}</h2>
                 <p class="form-subtitle">Modify school, project title, mentor, or student participant details below</p>
             </div>
 
             <div class="form-section">
-                <h3>📌 Excel Header Information</h3>
+                <h3>Excel Header Information</h3>
                 <div class="team-details-grid">
                     <div class="form-group">
-                        <label for="editTeamName">ID / Team ID *</label>
-                        <input type="text" id="editTeamName" value="${escapeHTML(originalTeamName)}">
+                        <label for="editTeamId">ID / Team ID *</label>
+                        <input type="text" id="editTeamId" value="${escapeHTML(originalTeamName)}">
+                    </div>
+                    <div class="form-group">
+                        <label for="editTeamTitle">TEAM NAME *</label>
+                        <input type="text" id="editTeamTitle" value="${escapeHTML(members.find(m => m.teamTitle || m.customTeamName)?.teamTitle || members.find(m => m.customTeamName)?.customTeamName || originalTeamName)}">
                     </div>
                     <div class="form-group">
                         <label for="editSchool">SCHOOL NAME *</label>
@@ -956,13 +1174,21 @@ function showEditTeamForm(originalTeamName) {
                         <label for="editMentor">MENTOR</label>
                         <input type="text" id="editMentor" value="${escapeHTML(mentor)}">
                     </div>
+                    <div class="form-group">
+                        <label for="editCategory">CATEGORY</label>
+                        <select id="editCategory" style="width: 100%; padding: 11px 16px; border: 1.5px solid var(--border-color); border-radius: 12px; font-size: 14.5px; font-weight: 600; color: var(--text-primary); outline: none;">
+                            <option value="">Select Category</option>
+                            <option value="Software" ${members[0]?.category === 'Software' ? 'selected' : ''}>Software</option>
+                            <option value="Hardware" ${members[0]?.category === 'Hardware' ? 'selected' : ''}>Hardware</option>
+                        </select>
+                    </div>
                 </div>
             </div>
 
             <div class="form-section">
                 <div class="members-form-header">
-                    <h3>👥 Team Member Items</h3>
-                    <button id="addEditMemberBtn" class="add-member-btn" type="button">➕ Add Member Item</button>
+                    <h3>Team Member Items</h3>
+                    <button id="addEditMemberBtn" class="add-member-btn" type="button">Add Member Item</button>
                 </div>
                 <div id="editMembers">
                     ${memberCardsHTML}
@@ -970,7 +1196,7 @@ function showEditTeamForm(originalTeamName) {
             </div>
 
             <div class="form-actions">
-                <button id="saveEditTeamBtn" class="save-team-btn" type="button">💾 Save Changes</button>
+                <button id="saveEditTeamBtn" class="save-team-btn" type="button">Save Changes</button>
                 <button id="cancelEditBtn" class="cancel-team-btn" type="button">Cancel</button>
             </div>
         </div>
@@ -994,20 +1220,24 @@ function showEditTeamForm(originalTeamName) {
 }
 
 async function saveEditedTeam(originalTeamName, existingMembers) {
-    const newTeamNameInput = document.getElementById("editTeamName");
+    const editTeamIdInput = document.getElementById("editTeamId") || document.getElementById("editTeamName");
+    const editTeamTitleInput = document.getElementById("editTeamTitle");
     const schoolInput = document.getElementById("editSchool");
     const projectInput = document.getElementById("editProject");
     const mentorInput = document.getElementById("editMentor");
     const saveButton = document.getElementById("saveEditTeamBtn");
 
-    if (!newTeamNameInput || !schoolInput) return;
+    if (!editTeamIdInput || !schoolInput) return;
 
-    const newTeamName = newTeamNameInput.value.trim();
+    const newTeamId = editTeamIdInput.value.trim();
+    const newTeamTitle = editTeamTitleInput ? editTeamTitleInput.value.trim() : newTeamId;
     const school = schoolInput.value.trim();
     const project = projectInput.value.trim();
     const mentor = mentorInput.value.trim();
+    const categoryInput = document.getElementById("editCategory");
+    const category = categoryInput?.value || "";
 
-    if (!newTeamName || !school) {
+    if (!newTeamId || !school) {
         alert("Please enter Team ID and School Name.");
         return;
     }
@@ -1050,14 +1280,17 @@ async function saveEditedTeam(originalTeamName, existingMembers) {
         // Re-write updated student documents to Firestore
         for (let i = 0; i < updatedMembers.length; i++) {
             const m = updatedMembers[i];
-            const safeTeam = newTeamName.replace(/[\/\s.#$\[\]]/g, "_");
+            const safeTeam = newTeamId.replace(/[\/\s.#$\[\]]/g, "_");
             const safeStudent = m.studentName.replace(/[\/\s.#$\[\]]/g, "_");
             const studentId = `${safeTeam}_${safeStudent}_${i + 1}`;
 
             const studentData = {
                 studentId,
-                teamName: newTeamName,
-                teamNo: newTeamName,
+                teamName: newTeamId,
+                teamId: newTeamId,
+                teamNo: newTeamId,
+                teamTitle: newTeamTitle,
+                customTeamName: newTeamTitle,
                 school,
                 projectTitle: project,
                 mentor,
@@ -1065,6 +1298,7 @@ async function saveEditedTeam(originalTeamName, existingMembers) {
                 participantNo: m.participantNo,
                 classDivision: m.classDivision,
                 studentPhone: m.studentPhone,
+                category,
                 verified: existingMembers[i]?.verified || false,
                 arrived: existingMembers[i]?.arrived || false,
                 updatedAt: new Date().toISOString()
@@ -1107,30 +1341,29 @@ function showTeam(teamName) {
     const school = members.find(m => m.school && m.school !== "N/A")?.school || members[0]?.school || "Not Available";
     const project = members.find(m => m.projectTitle && m.projectTitle !== "N/A")?.projectTitle || members[0]?.projectTitle || "Not Available";
     const mentor = members.find(m => m.mentor && m.mentor !== "N/A")?.mentor || members[0]?.mentor || "Not Available";
+    const category = members.find(m => m.category && m.category !== "N/A")?.category || members[0]?.category || "Not Specified";
     const arrivedCount = members.filter(isVerified).length;
     const allArrived = members.length > 0 && arrivedCount === members.length;
 
     teamsDiv.innerHTML = `
-        <div class="team-view-hero" style="background: linear-gradient(135deg, #1e1b4b 0%, #312e81 50%, #4338ca 100%); color: white; padding: 32px 28px; border-radius: 24px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(49, 46, 129, 0.25);">
-            <div style="position: absolute; right: -20px; top: -20px; font-size: 140px; opacity: 0.08; pointer-events: none;">🚀</div>
-            
+        <div class="team-view-hero" style="background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 50%, #1d4ed8 100%); color: white; padding: 32px 28px; border-radius: 24px; margin-bottom: 24px; position: relative; overflow: hidden; box-shadow: 0 10px 30px rgba(30, 58, 138, 0.25);">
             <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 14px; margin-bottom: 22px;">
-                <button id="backBtn" class="back-btn" type="button" style="background: rgba(255, 255, 255, 0.15); color: white; border: 1px solid rgba(255, 255, 255, 0.25); backdrop-filter: blur(10px); margin-bottom: 0; padding: 10px 18px;">
+                <button id="backBtn" class="back-btn" type="button" style="background: rgba(255, 255, 255, 0.18); color: white; border: 1px solid rgba(255, 255, 255, 0.3); backdrop-filter: blur(10px); margin-bottom: 0; padding: 10px 18px;">
                     ← Back to Desk
                 </button>
 
                 <div style="display: flex; gap: 10px; flex-wrap: wrap; align-items: center;">
                     <button id="markAllBtn" class="mark-all-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px; font-weight: 750;">
-                        ${allArrived ? "❌ Mark All Unarrived" : "✅ Mark All Arrived"}
+                        ${allArrived ? "Mark All Unarrived" : "Mark All Arrived"}
                     </button>
                     <button id="editTeamBtn" class="edit-team-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); border-radius: 12px;">
-                        ✏️ Edit Team
+                        Edit Team
                     </button>
                     <button id="reportBtn" class="report-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px;">
-                        🖨️ PDF Report
+                        PDF Report
                     </button>
                     <button id="deleteTeamBtn" class="delete-team-btn" type="button" style="padding: 10px 18px; font-size: 13.5px; border-radius: 12px;">
-                        🗑️ Delete
+                        Delete
                     </button>
                 </div>
             </div>
@@ -1148,18 +1381,22 @@ function showTeam(teamName) {
                 ${escapeHTML(teamName.toUpperCase())}
             </h1>
 
-            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; background: rgba(255, 255, 255, 0.08); padding: 18px 22px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.15); backdrop-filter: blur(12px);">
+            <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 14px; background: rgba(255, 255, 255, 0.12); padding: 18px 22px; border-radius: 18px; border: 1px solid rgba(255, 255, 255, 0.2); backdrop-filter: blur(12px);">
                 <div>
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">School Name</div>
-                    <div style="font-size: 14.5px; font-weight: 700; color: white;">🏫 ${escapeHTML(school)}</div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.75); font-weight: 700; margin-bottom: 3px;">School Name</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: white;">${escapeHTML(school)}</div>
                 </div>
                 <div>
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">Project Title</div>
-                    <div style="font-size: 14.5px; font-weight: 700; color: #a5f3fc;">💡 ${escapeHTML(project)}</div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.75); font-weight: 700; margin-bottom: 3px;">Project Title</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: #bae6fd;">${escapeHTML(project)}</div>
                 </div>
                 <div>
-                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.7); font-weight: 700; margin-bottom: 3px;">Mentor / Guide</div>
-                    <div style="font-size: 14.5px; font-weight: 700; color: #fef08a;">👨‍🏫 ${escapeHTML(mentor)}</div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.75); font-weight: 700; margin-bottom: 3px;">Mentor / Guide</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: #e0f2fe;">${escapeHTML(mentor)}</div>
+                </div>
+                <div>
+                    <div style="font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: rgba(255,255,255,0.75); font-weight: 700; margin-bottom: 3px;">Category</div>
+                    <div style="font-size: 14.5px; font-weight: 700; color: #fdf4ff;">${escapeHTML(category)}</div>
                 </div>
             </div>
         </div>
@@ -1167,7 +1404,7 @@ function showTeam(teamName) {
         <div class="team-members-container" style="background: white; border-radius: 24px; padding: 28px; box-shadow: var(--shadow-md); border: 1px solid var(--border-color);">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 2px dashed #f1f5f9; flex-wrap: wrap; gap: 10px;">
                 <h3 style="font-size: 18px; font-weight: 800; color: var(--text-primary); margin: 0;">
-                    👥 Team Participant Members (${members.length} Members)
+                    Team Participant Members (${members.length} Members)
                 </h3>
                 <span style="color: var(--text-muted); font-size: 13px; font-weight: 600;">
                     Click checkbox or card to update check-in status
@@ -1180,15 +1417,15 @@ function showTeam(teamName) {
 
     document.getElementById("backBtn")?.addEventListener("click", showTeams);
     document.getElementById("editTeamBtn")?.addEventListener("click", () => showEditTeamForm(teamName));
-    document.getElementById("reportBtn")?.addEventListener("click", () => generateReport(teamName, school, project, members));
-    document.getElementById("deleteTeamBtn")?.addEventListener("click", () => deleteTeam(teamName));
+    document.getElementById("reportBtn")?.addEventListener("click", () => generateReport(teamName, school, project, category, members));
+    document.getElementById("deleteTeamBtn")?.addEventListener("click", () => deleteTeam(teamName, members));
 
     document.getElementById("markAllBtn")?.addEventListener("click", async () => {
         const targetValue = !allArrived;
         const markAllBtn = document.getElementById("markAllBtn");
         if (markAllBtn) {
             markAllBtn.disabled = true;
-            markAllBtn.textContent = "⏳ Updating...";
+            markAllBtn.textContent = "Updating...";
         }
 
         try {
@@ -1222,12 +1459,12 @@ function showTeam(teamName) {
         memberCard.innerHTML = `
             <div style="display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px;">
                 <div style="display: flex; align-items: center; gap: 12px;">
-                    <div style="width: 44px; height: 44px; border-radius: 14px; background: ${isVerified(student) ? '#dcfce7' : '#eef2ff'}; color: ${isVerified(student) ? '#16a34a' : '#4f46e5'}; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 800;">
-                        👤
+                    <div style="width: 44px; height: 44px; border-radius: 14px; background: ${isVerified(student) ? '#dcfce7' : '#eff6ff'}; color: ${isVerified(student) ? '#16a34a' : '#2563eb'}; display: flex; align-items: center; justify-content: center; font-size: 15px; font-weight: 800;">
+                        #${index + 1}
                     </div>
                     <div>
                         <h4 style="font-size: 15.5px; font-weight: 800; color: var(--text-primary); margin: 0 0 2px 0;">
-                            ${index + 1}. ${escapeHTML(student.studentName)}
+                            ${escapeHTML(student.studentName)}
                         </h4>
                         <span style="font-size: 12px; color: var(--text-muted); font-weight: 600;">
                             ID: ${escapeHTML(student.participantNo || `P${index + 1}`)}
@@ -1236,14 +1473,14 @@ function showTeam(teamName) {
                 </div>
 
                 <span style="padding: 4px 10px; border-radius: 20px; font-size: 11.5px; font-weight: 800; background: ${isVerified(student) ? '#dcfce7' : '#fee2e2'}; color: ${isVerified(student) ? '#15803d' : '#b91c1c'};">
-                    ${isVerified(student) ? '✅ Arrived' : '⏳ Pending'}
+                    ${isVerified(student) ? 'Arrived' : 'Pending'}
                 </span>
             </div>
 
             ${student.studentPhone || student.classDivision ? `
                 <div style="margin: 10px 0 14px 0; font-size: 12.5px; color: #64748b; display: flex; gap: 12px; flex-wrap: wrap;">
-                    ${student.classDivision ? `<span>🏫 Class: <strong>${escapeHTML(student.classDivision)}</strong></span>` : ''}
-                    ${student.studentPhone ? `<span>📞 Phone: <strong>${escapeHTML(student.studentPhone)}</strong></span>` : ''}
+                    ${student.classDivision ? `<span>Class: <strong>${escapeHTML(student.classDivision)}</strong></span>` : ''}
+                    ${student.studentPhone ? `<span>Phone: <strong>${escapeHTML(student.studentPhone)}</strong></span>` : ''}
                 </div>
             ` : ''}
 
@@ -1287,6 +1524,7 @@ function generateReport(
     teamName,
     school,
     project,
+    category,
     members
 ) {
     const arrivedCount =
@@ -1527,7 +1765,7 @@ function generateReport(
             <div class="report">
                 <div class="header">
                     <h1>
-                        🚀 NSCET INNOVATE 24
+                        NSCET INNOVATE 24
                     </h1>
 
                     <h2>
@@ -1550,6 +1788,11 @@ function generateReport(
                     <p>
                         <strong>Project:</strong>
                         ${escapeHTML(project)}
+                    </p>
+
+                    <p>
+                        <strong>Category:</strong>
+                        ${escapeHTML(category)}
                     </p>
                 </div>
 
@@ -1664,7 +1907,7 @@ function generateOverallReport() {
                 allStudents
                     .map(
                         student =>
-                            student.school?.trim()
+                            (student.school ? String(student.school).trim() : "")
                     )
                     .filter(Boolean)
             ).size;
@@ -1687,8 +1930,7 @@ function generateOverallReport() {
                     const members =
                         allStudents.filter(
                             student =>
-                                student.teamName
-                                    ?.trim() === teamName
+                                (student.teamName ? String(student.teamName).trim() : "") === teamName
                         );
 
                     const totalMembers =
@@ -1770,7 +2012,7 @@ function generateOverallReport() {
                     * { box-sizing: border-box; }
                     body { margin: 0; padding: 30px; color: #1e293b; font-family: "Segoe UI", Arial, sans-serif; background: #f1f5f9; }
                     .report-container { max-width: 1100px; margin: auto; overflow: hidden; background: white; border-radius: 20px; box-shadow: 0 15px 40px rgba(15, 23, 42, 0.12); }
-                    .report-header { padding: 35px; color: white; text-align: center; background: linear-gradient(135deg, #312e81, #4f46e5, #2563eb); }
+                    .report-header { padding: 35px; color: white; text-align: center; background: linear-gradient(135deg, #0f172a, #1e3a8a, #1d4ed8); }
                     .report-header h1 { margin: 0; font-size: 30px; font-weight: 800; }
                     .report-header h2 { margin: 8px 0; font-size: 19px; font-weight: 500; }
                     .report-header p { margin: 5px 0 0; font-size: 13px; opacity: 0.85; }
@@ -1778,7 +2020,7 @@ function generateOverallReport() {
                     .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 12px; margin: 25px 0 30px; }
                     .summary-card { padding: 18px 10px; border-radius: 12px; text-align: center; }
                     .summary-number { display: block; margin-bottom: 5px; font-size: 28px; font-weight: 800; }
-                    .blue { color: #4338ca; background: #eef2ff; }
+                    .blue { color: #1e3a8a; background: #eff6ff; }
                     .green { color: #15803d; background: #dcfce7; }
                     .orange { color: #b45309; background: #fef3c7; }
                     .pink { color: #be185d; background: #fce7f3; }
@@ -1803,8 +2045,13 @@ function generateOverallReport() {
             <body>
                 <div class="report-container">
                     <div class="report-header">
-                        <h1>🚀 NSCET INNOVATE 24</h1>
-                        <h2>Overall Registration Report</h2>
+                        <div style="display: flex; align-items: center; justify-content: center; gap: 16px; margin-bottom: 10px;">
+                            <img src="College_logo.webp" alt="College Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; background: white; padding: 5px; border: 2px solid #fbbf24;">
+                            <div style="text-align: left;">
+                                <h1 style="margin: 0; font-size: 26px; font-weight: 800;">NSCET INNOVATE 24</h1>
+                                <h2 style="margin: 4px 0 0; font-size: 18px; font-weight: 600;">Overall Registration Report</h2>
+                            </div>
+                        </div>
                         <p>Hackathon Registration Desk</p>
                     </div>
 
@@ -1910,6 +2157,7 @@ function prepareExportData() {
         const teamId = firstMember.studentId || firstMember.id || teamName;
         const school = firstMember.school || "N/A";
         const project = firstMember.projectTitle || "N/A";
+        const category = firstMember.category || "N/A";
         const mentor = firstMember.mentor || "N/A";
         const totalMembers = members.length;
         const arrivedMembers = members.filter(isVerified).length;
@@ -1929,6 +2177,7 @@ function prepareExportData() {
             "NO OF MEMBERS": totalMembers,
             "SCHOOL NAME": school,
             "PROJECT NAME": project,
+            "CATEGORY": category,
             "MENTOR": mentor,
             "ARRIVED MEMBERS": arrivedMembers,
             "PENDING MEMBERS": pendingMembers,
@@ -1962,6 +2211,7 @@ function exportToExcel() {
             { wch: 16 }, // NO OF MEMBERS
             { wch: 28 }, // SCHOOL NAME
             { wch: 28 }, // PROJECT NAME
+            { wch: 15 }, // CATEGORY
             { wch: 22 }, // MENTOR
             { wch: 18 }, // ARRIVED MEMBERS
             { wch: 18 }, // PENDING MEMBERS
@@ -1983,7 +2233,7 @@ function exportToCSV() {
         return;
     }
 
-    const headers = ["S.NO", "ID", "TEAM NAME", "NO OF MEMBERS", "SCHOOL NAME", "PROJECT NAME", "MENTOR", "ARRIVED MEMBERS", "PENDING MEMBERS", "STATUS"];
+    const headers = ["S.NO", "ID", "TEAM NAME", "NO OF MEMBERS", "SCHOOL NAME", "PROJECT NAME", "CATEGORY", "MENTOR", "ARRIVED MEMBERS", "PENDING MEMBERS", "STATUS"];
     const csvRows = [];
     
     // Header row
@@ -2029,7 +2279,7 @@ async function clearAllDatabaseRecords() {
             await deleteDoc(doc(db, "students", docSnap.id));
             count++;
         }
-        alert(`✅ Database completely cleared! (${count} records permanently deleted).`);
+        alert(`Database completely cleared! (${count} records permanently deleted).`);
         allStudents = [];
         showDashboard();
         showTeams();

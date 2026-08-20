@@ -74,9 +74,9 @@ function loadTeams() {
                             ${arrivedCount}/${total} Arrived
                         </span>
                     </div>
-                    <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">🏫 ${school}</p>
-                    <p style="margin: 2px 0 0; font-size: 13px; color: #64748b;">💡 ${project}</p>
-                    <p style="margin: 4px 0 0; font-size: 13px; color: #475569; font-weight: 600;">👥 ${total} Members</p>
+                    <p style="margin: 6px 0 0; font-size: 13px; color: #64748b;">School: ${school}</p>
+                    <p style="margin: 2px 0 0; font-size: 13px; color: #64748b;">Project: ${project}</p>
+                    <p style="margin: 4px 0 0; font-size: 13px; color: #475569; font-weight: 600;">${total} Members</p>
                 `;
 
                 div.onclick = () => {
@@ -88,7 +88,7 @@ function loadTeams() {
             });
         }, (error) => {
             console.error("Teams realtime error:", error);
-            teamsDiv.innerHTML = `<div style="color: #b91c1c; background: #fee2e2; padding: 15px; border-radius: 8px;">❌ Failed to load teams: ${error.message}</div>`;
+            teamsDiv.innerHTML = `<div style="color: #b91c1c; background: #fee2e2; padding: 15px; border-radius: 8px;">Failed to load teams: ${error.message}</div>`;
         });
     } catch (error) {
         console.error("Teams load error:", error);

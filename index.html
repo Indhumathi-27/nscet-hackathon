@@ -11,7 +11,7 @@
     <header class="header">
         <div class="header-content">
             <div class="brand-section">
-                <div class="brand-icon">🚀</div>
+                <img src="College_logo.webp" alt="College Logo" class="brand-logo">
                 <div class="brand-title">
                     <h1>NSCET INNOVATE 24</h1>
                     <p>Hackathon Registration Desk</p>
@@ -19,10 +19,10 @@
             </div>
 
             <nav class="nav-links">
-                <a href="index.html" class="nav-link active">📊 Main Desk</a>
-                <a href="dashboard.html" class="nav-link">📈 Analytics</a>
-                <a href="import.html" class="nav-link">📥 Import Excel</a>
-                <a href="teams.html" class="nav-link">📋 Teams List</a>
+                <a href="index.html" class="nav-link active">Main Desk</a>
+                <a href="dashboard.html" class="nav-link">Analytics</a>
+                <a href="import.html" class="nav-link">Import Excel</a>
+                <a href="teams.html" class="nav-link">Teams List</a>
             </nav>
         </div>
     </header>
@@ -30,7 +30,7 @@
     <main class="container">
         <div class="page-title">
             <div>
-                <h2>📊 Registration Dashboard</h2>
+                <h2>Registration Dashboard</h2>
                 <p>Real-time overview of hackathon team check-ins & participants</p>
             </div>
         </div>
@@ -39,7 +39,6 @@
             <div class="stat-card card-blue">
                 <div class="stat-header">
                     <div class="stat-title">Total Teams</div>
-                    <div class="stat-icon-wrapper">👥</div>
                 </div>
                 <div class="stat-number" id="totalTeams">0</div>
             </div>
@@ -47,7 +46,6 @@
             <div class="stat-card card-green">
                 <div class="stat-header">
                     <div class="stat-title">Arrived Teams</div>
-                    <div class="stat-icon-wrapper">✅</div>
                 </div>
                 <div class="stat-number" id="arrivedTeams">0</div>
             </div>
@@ -55,47 +53,46 @@
             <div class="stat-card card-orange">
                 <div class="stat-header">
                     <div class="stat-title">Pending Teams</div>
-                    <div class="stat-icon-wrapper">⏳</div>
                 </div>
                 <div class="stat-number" id="pendingTeams">0</div>
             </div>
 
-            <div class="stat-card card-purple">
+            <div class="stat-card card-purple clickable-card" id="studentsStatCard" title="Click to view all registered students directory">
                 <div class="stat-header">
                     <div class="stat-title">Total Students</div>
-                    <div class="stat-icon-wrapper">🎓</div>
                 </div>
                 <div class="stat-number" id="totalStudents">0</div>
+                <div class="card-click-hint">Click for Students List →</div>
             </div>
 
-            <div class="stat-card card-pink">
+            <div class="stat-card card-pink clickable-card" id="schoolsStatCard" title="Click to view participating schools breakdown">
                 <div class="stat-header">
                     <div class="stat-title">Total Schools</div>
-                    <div class="stat-icon-wrapper">🏫</div>
                 </div>
                 <div class="stat-number" id="totalSchools">0</div>
+                <div class="card-click-hint">Click for Schools List →</div>
             </div>
         </div>
 
         <section class="teams-section">
             <div class="teams-header">
                 <div>
-                    <h2>📋 Team Registration & Management</h2>
+                    <h2>Team Registration & Management</h2>
                 </div>
 
                 <div class="header-actions" style="display: flex; gap: 8px; flex-wrap: wrap; align-items: center;">
                     <span class="live-badge">Live Updates</span>
                     <button id="exportExcelBtn" class="export-btn btn-excel" type="button" title="Export to Excel Spreadsheet">
-                        📗 Export Excel
+                        Export Excel
                     </button>
                     <button id="exportCsvBtn" class="export-btn btn-csv" type="button" title="Export to CSV file">
-                        📄 Export CSV
+                        Export CSV
                     </button>
                     <button id="overallReportBtn" class="overall-report-btn" type="button" title="Print/Export PDF Summary">
-                        🖨️ PDF Report
+                        PDF Report
                     </button>
                     <button id="clearDbBtn" class="delete-team-btn" type="button" title="Delete all database records completely" style="padding: 9px 14px;">
-                        🗑️ Clear DB Data
+                        Clear DB Data
                     </button>
                 </div>
             </div>
@@ -105,6 +102,71 @@
             </div>
         </section>
     </main>
+
+    <!-- Schools Breakdown Modal Popup -->
+    <div class="modal-overlay" id="schoolsModal">
+        <div class="modal-container">
+            <div class="modal-header">
+                <div>
+                    <h3>Participating Schools Breakdown</h3>
+                    <p>List of registered schools with team & student counts</p>
+                </div>
+                <button class="modal-close-btn" id="closeSchoolsModalBtn" type="button" title="Close Modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 18px; position: relative;">
+                    <input type="text" id="schoolSearchInput" placeholder="🔍 Search school by name..." style="width: 100%; padding: 11px 18px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 13.5px; outline: none; box-shadow: var(--shadow-sm);">
+                </div>
+                <div class="table-wrapper">
+                    <table class="teams-table" id="schoolsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>SCHOOL NAME</th>
+                                <th>TEAMS</th>
+                                <th>TOTAL STUDENTS</th>
+                                <th>ARRIVED STUDENTS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="schoolsTableBody">
+                            <tr><td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted);">Loading schools list...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+    <!-- Students Directory Modal Popup -->
+    <div class="modal-overlay" id="studentsModal">
+        <div class="modal-container" style="max-width: 920px;">
+            <div class="modal-header">
+                <div>
+                    <h3>Registered Students Directory</h3>
+                    <p>Complete list of students with school name and team name</p>
+                </div>
+                <button class="modal-close-btn" id="closeStudentsModalBtn" type="button" title="Close Modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <div style="margin-bottom: 18px; position: relative;">
+                    <input type="text" id="studentSearchInput" placeholder="🔍 Search student name, school name, or team name..." style="width: 100%; padding: 11px 18px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 13.5px; outline: none; box-shadow: var(--shadow-sm);">
+                </div>
+                <div class="table-wrapper">
+                    <table class="teams-table" id="studentsTable">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>STUDENT NAME</th>
+                                <th>SCHOOL NAME</th>
+                                <th>TEAM NAME</th>
+                                <th>STATUS</th>
+                            </tr>
+                        </thead>
+                        <tbody id="studentsTableBody">
+                            <tr><td colspan="5" style="text-align: center; padding: 24px; color: var(--text-muted);">Loading students list...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Excel library -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>

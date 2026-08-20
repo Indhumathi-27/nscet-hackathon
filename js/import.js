@@ -75,7 +75,7 @@ fileInput?.addEventListener("change", (e) => {
 
 async function handleFileSelect(file) {
     if (!file) return;
-    fileDetails.textContent = `📄 Selected File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
+    fileDetails.textContent = `Selected File: ${file.name} (${(file.size / 1024).toFixed(1)} KB)`;
     
     try {
         setStatus("Reading spreadsheet preview...", "info");
@@ -103,7 +103,7 @@ async function handleFileSelect(file) {
 
     } catch (err) {
         console.error("Preview error:", err);
-        setStatus(`❌ Error reading Excel file: ${err.message}`, "error");
+        setStatus(`Error reading Excel file: ${err.message}`, "error");
     }
 }
 
@@ -258,9 +258,9 @@ importBtn?.addEventListener("click", async () => {
 
         setStatus(`
             <div style="display: flex; flex-direction: column; gap: 12px; align-items: center; text-align: center; padding: 8px;">
-                <div style="font-size: 15px; font-weight: 800; color: #15803d;">🎉 Successfully imported ${uploadedCount} student records into your new nscet-register database!</div>
+                <div style="font-size: 15px; font-weight: 800; color: #15803d;">Successfully imported ${uploadedCount} student records into your database!</div>
                 <a href="index.html" class="save-team-btn" style="text-decoration: none; padding: 11px 22px; display: inline-flex; align-items: center; gap: 8px; width: auto; font-size: 14px;">
-                    📊 View Imported Data on Main Desk →
+                    View Imported Data on Main Desk →
                 </a>
             </div>
         `, "success");
@@ -268,7 +268,7 @@ importBtn?.addEventListener("click", async () => {
 
     } catch (error) {
         console.error("Upload error:", error);
-        setStatus(`❌ Import Error: ${error.message}`, "error");
+        setStatus(`Import Error: ${error.message}`, "error");
         importBtn.disabled = false;
     }
 });

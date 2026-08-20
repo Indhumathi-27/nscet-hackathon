@@ -164,8 +164,13 @@ window.generateReport = function () {
         </head>
         <body>
             <div class="card">
-                <h1>🚀 NSCET INNOVATE 24</h1>
-                <h2>Team Registration Report: ${teamNo}</h2>
+                <div style="display: flex; align-items: center; gap: 14px; margin-bottom: 15px;">
+                    <img src="College_logo.webp" alt="College Logo" style="width: 76px; height: 76px; object-fit: contain; border-radius: 50%; background: white; padding: 5px; border: 2px solid #2563eb;">
+                    <div>
+                        <h1 style="margin: 0; font-size: 24px;">NSCET INNOVATE 24</h1>
+                        <h2 style="margin: 4px 0 0; color: #475569; font-size: 16px;">Team Registration Report: ${teamNo}</h2>
+                    </div>
+                </div>
                 <p><strong>School:</strong> ${school}</p>
                 <p><strong>Project:</strong> ${project}</p>
                 <p><strong>Attendance:</strong> ${arrivedCount} / ${totalMembers} Arrived</p>
